@@ -23,7 +23,7 @@ class ltv_sys_id_class(object):
 		self.sim = MjSim(model, nsubsteps=1)
 		
 
-	def sys_id(self, x_t, u_t, central_diff=1, activate_second_order=1, V_x_=None):
+	def sys_id(self, x_t, u_t, central_diff=1, activate_second_order=0, V_x_=None):
 
 		'''
 			system identification for a given nominal state and control
@@ -54,9 +54,9 @@ class ltv_sys_id_class(object):
 			assert V_x_ is not None
 
 			V_x_ = np.tile(V_x_.T, (self.n_samples, 1))
-			print(V_x_)
+			# print(V_x_)
 			Z = (F_X_f + F_X_b - 2 * self.simulate((x_t.T), (u_t.T))).T
-			V_x_F_XU_XU = 2 * (Cov_inv @ ((XU.T @ (V_x_ @ Z)) @ XU)) @ Cov_inv
+			V_x_F_XU_XU = (Cov_inv @ ((XU.T @ (V_x_ @ Z)) @ XU)) @ Cov_inv
 
 		#print(F_XU_XU.shape)
 		return F_XU, V_x_F_XU_XU	#(n_samples*self.sigma**2)

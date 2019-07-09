@@ -16,9 +16,9 @@ from ltv_sys_id import ltv_sys_id_class
 import copy
 
 
-class pendulum_D2C_DDP(DDP, ltv_sys_id_class):
+class model_free_cartpole_DDP(DDP, ltv_sys_id_class):
 	
-	def __init__(self, initial_state, final_state, MODEL_XML, horizon, state_dimemsion, control_dimension, Q, Q_final, R):
+	def __init__(self, initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R):
 		
 		'''
 			Declare the matrices associated with the cost function
@@ -27,8 +27,8 @@ class pendulum_D2C_DDP(DDP, ltv_sys_id_class):
 		self.Q_final = Q_final
 		self.R = R
 
-		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, horizon, initial_state, final_state)
-		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=100)
+		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, alpha, horizon, initial_state, final_state)
+		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=50)
 
 	def state_output(self, state):
 		'''
@@ -46,13 +46,13 @@ class pendulum_D2C_DDP(DDP, ltv_sys_id_class):
 		'''
 			Incremental cost in terms of state and controls
 		'''
-		return (mtimes(mtimes((x - self.X_g).T , self.Q) , (x - self.X_g))) + mtimes(mtimes((u.T) , self.R) , u)
+		return (((x - self.X_g).T @ self.Q) @ (x - self.X_g)) + (((u.T) @ self.R) @ u)
 	
 	def cost_final(self, x):
 		'''
 			Cost in terms of state at the terminal time-step
 		'''
-		return (mtimes(mtimes((x - self.X_g).T , self.Q_final) , (x - self.X_g)))
+		return (((x - self.X_g).T @ self.Q_final) @ (x - self.X_g)) 
 
 	def initialize_traj(self, path=None):
 
@@ -62,10 +62,13 @@ class pendulum_D2C_DDP(DDP, ltv_sys_id_class):
 		if path is None:
 			
 			for t in range(0, self.N):
-				self.U_p[t] = np.zeros((self.n_u, 1))#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
-				self.U_p_temp[t] = copy.deepcopy(self.U_p[t])
-				self.X_p[t] = self.X_p_0
-				self.X_p_temp[t] = self.X_p_0
+				self.U_p[t] = np.random.normal(0, 0.001, (self.n_u, 1))#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
+			
+			np.copyto(self.U_p_temp, self.U_p)
+			
+			self.forward_pass_sim()
+			
+			np.copyto(self.X_p_temp, self.X_p)
 
 		else:
 
@@ -83,35 +86,35 @@ if __name__=="__main__":
 	state_dimemsion = 4
 	control_dimension = 1
 
-	Q = 90*np.array([[2, 0, 0, 0],[0, 3, 0, 0],[0, 0, 1.2, 0],[0, 0, 0, 1.2]])
-	Q_final = 900*np.array([[2, 0, 0, 0],[0, 3, 0, 0],[0, 0, 1.2, 0],[0, 0, 0, 1.2]])
-	R = .0005*np.ones((1,1))
-	
+	Q = 10*np.array([[2, 0, 0, 0],[0, 8, 0, 0],[0, 0, .2, 0],[0, 0, 0, 0.3]])
+	Q_final = 700*np.array([[2, 0, 0, 0],[0, 8, 0, 0],[0, 0, 1, 0],[0, 0, 0, 1]])
+	R = .001*np.ones((1,1))
+	alpha = 0.3
 	'''
 	W_x_LQR = 10*np.eye(2)
 	W_u_LQR = 2*np.eye(1)
 	W_x_LQR_f = 100*np.eye(2)
 	'''
 	# Declare the initial state and the final state in the problem
-	initial_state = np.array([[2.0], [-0.3], [0], [0]])
+	initial_state = np.array([[0], [-0.5], [0], [0]])
 	final_state = np.array([[0], [0], [0], [0]])#np.zeros((2,1))
 
 	# Initiate the above class that contains objects specific to this problem
-	D2C_pendulum = pendulum_D2C_DDP(initial_state, final_state, MODEL_XML, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
+	cartpole = model_free_cartpole_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
 	start_time = time.time()
 
 	# Run the DDP algorithm
-	D2C_pendulum.iterate_ddp()
+	cartpole.iterate_ddp()
 	
 	print("Time taken: ", time.time() - start_time)
 	
 	# Test the obtained policy
-	D2C_pendulum.test_episode()
+	cartpole.test_episode()
 
-	print(D2C_pendulum.X_p)
+	print(cartpole.X_p)
 	
 	# Plot the episodic cost during the training
-	D2C_pendulum.plot_episodic_cost_history()
+	cartpole.plot_episodic_cost_history()
 
 

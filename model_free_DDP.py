@@ -22,13 +22,13 @@ import json
 
 class DDP(object):
 
-	def __init__(self, MODEL_XML, n_x, n_u, horizon, initial_state, final_state):
+	def __init__(self, MODEL_XML, n_x, n_u, alpha, horizon, initial_state, final_state):
 
 		self.X_p_0, self.X_g = initial_state, final_state
 
 		self.n_x, self.n_u, self.N = n_x, n_u, horizon
 		
-		self.alpha = .4
+		self.alpha = alpha
 
 		
 		# Define nominal state trajectory
@@ -60,9 +60,9 @@ class DDP(object):
 
 		self.initialize_traj()
 		
-		for j in range(30):	
+		for j in range(60):	
 
-			if j<25:
+			if j<300:
 				b_pass_success_flag, del_J_alpha = self.backward_pass()
 			else:
 				b_pass_success_flag, del_J_alpha = self.backward_pass(activate_second_order_dynamics=1)
@@ -315,10 +315,11 @@ class DDP(object):
 	def plot_episodic_cost_history(self):
 
 		try:
-			self.plot_(self.episodic_cost_history)
+			self.plot_(np.asarray(self.episodic_cost_history).flatten())
 
 		except:
 
+			print("Plotting failed")
 			pass
 
 	def save_policy(self, path_to_file):

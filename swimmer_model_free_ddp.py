@@ -15,9 +15,9 @@ from casadi import *
 from ltv_sys_id import ltv_sys_id_class
 
 
-class pendulum_D2C_DDP(DDP, ltv_sys_id_class):
+class model_free_swimmer_DDP(DDP, ltv_sys_id_class):
 	
-	def __init__(self, initial_state, final_state, MODEL_XML, horizon, state_dimemsion, control_dimension, Q, Q_final, R):
+	def __init__(self, initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R):
 		
 		'''
 			Declare the matrices associated with the cost function
@@ -26,7 +26,7 @@ class pendulum_D2C_DDP(DDP, ltv_sys_id_class):
 		self.Q_final = Q_final
 		self.R = R
 
-		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, horizon, initial_state, final_state)
+		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, alpha, horizon, initial_state, final_state)
 		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=25)
 
 	def state_output(self, state):
@@ -86,27 +86,27 @@ if __name__=="__main__":
 	Q_final = 900*np.diag([1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
 	R = .05*np.diag([2, 2])
 	
-
+	alpha = 0.4
 	# Declare the initial state and the final state in the problem
 	initial_state = np.zeros((10,1))
 	final_state = np.array([[0.5], [-0.6], [0], [0], [0], [0], [0], [0], [0] ,[0]])
 
 	# Initiate the above class that contains objects specific to this problem
-	D2C_pendulum = pendulum_D2C_DDP(initial_state, final_state, MODEL_XML, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
+	swimmer = model_free_swimmer_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
 	start_time = time.time()
 
 	# Run the DDP algorithm
-	D2C_pendulum.iterate_ddp()
+	swimmer.iterate_ddp()
 	
 	print("Time taken: ", time.time() - start_time)
 	
 	# Test the obtained policy
 	#D2C_pendulum.test_episode('swimmer_policy_1json.txt')
 	#D2C_pendulum.save_policy(path_to_file)
-	print(D2C_pendulum.X_p[-1])
+	print(swimmer.X_p[-1])
 	
 	# Plot the episodic cost during the training
-	D2C_pendulum.plot_episodic_cost_history()
+	swimmer.plot_episodic_cost_history()
 
 
