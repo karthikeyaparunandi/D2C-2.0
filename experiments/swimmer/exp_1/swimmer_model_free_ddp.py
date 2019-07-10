@@ -72,10 +72,8 @@ class model_free_swimmer_DDP(DDP, ltv_sys_id_class):
 if __name__=="__main__":
 
 	# Path of the model file
-	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
 	MODEL_XML = "/home/karthikeya/Documents/research/DDPG_D2C/libraries/gym/gym/envs/mujoco/assets/swimmer.xml"
-	path_to_file = path_to_model_free_DDP+"/experiments/swimmer/exp_4/swimmer_policy.txt"
-	training_cost_data_file = path_to_model_free_DDP+"/experiments/swimmer/exp_4/training_cost_data.txt"
+	path_to_file = "/home/karthikeya/Documents/research/model_free_DDP/swimmer_policy.txt"
 
 	# Declare other parameters associated with the problem statement
 	horizon = 800
@@ -101,15 +99,9 @@ if __name__=="__main__":
 	
 	print("Time taken: ", time.time() - start_time)
 	
-	# Save the episodic cost
-	with open(training_cost_data_file, 'w') as f:
-		for cost in swimmer.episodic_cost_history:
-			f.write("%s\n" % cost)
-
 	# Test the obtained policy
-	swimmer.save_policy(path_to_file)
 	swimmer.test_episode(1, path_to_file)
-
+	swimmer.save_policy(path_to_file)
 	print(swimmer.X_p[-1])
 	
 	# Plot the episodic cost during the training

@@ -63,7 +63,7 @@ class DDP(object):
 
 		self.initialize_traj()
 		
-		for j in range(180):	
+		for j in range(150):	
 
 			if j<1:
 				
@@ -104,7 +104,6 @@ class DDP(object):
 
 			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))	
 		
-
 
 	def backward_pass(self, activate_second_order_dynamics=0):
 

@@ -1,6 +1,6 @@
 '''
 copyright @ Karthikeya S Parunandi - karthikeyasharma91@gmail.com
-Model free DDP method with a 3-link swimmer experiment in MuJoCo simulator.
+Model free DDP method with a 6-link swimmer experiment in MuJoCo simulator.
 
 Date: July 6, 2019
 '''
@@ -13,7 +13,7 @@ from mujoco_py import load_model_from_path, MjSim, MjViewer
 from ltv_sys_id import ltv_sys_id_class
 
 
-class model_free_swimmer_DDP(DDP, ltv_sys_id_class):
+class model_free_swimmer_6_DDP(DDP, ltv_sys_id_class):
 	
 	def __init__(self, initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R):
 		
@@ -73,7 +73,7 @@ if __name__=="__main__":
 
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
-	MODEL_XML = "/home/karthikeya/Documents/research/DDPG_D2C/libraries/gym/gym/envs/mujoco/assets/swimmer.xml"
+	MODEL_XML = "/home/karthikeya/Documents/research/DDPG_D2C/libraries/gym/gym/envs/mujoco/assets/swimmer6.xml" 
 	path_to_file = path_to_model_free_DDP+"/experiments/swimmer/exp_4/swimmer_policy.txt"
 	training_cost_data_file = path_to_model_free_DDP+"/experiments/swimmer/exp_4/training_cost_data.txt"
 
@@ -92,7 +92,7 @@ if __name__=="__main__":
 	final_state = np.array([[0.5], [-0.6], [0], [0], [0], [0], [0], [0], [0] ,[0]])
 
 	# Initiate the above class that contains objects specific to this problem
-	swimmer = model_free_swimmer_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
+	swimmer = model_free_swimmer_6_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
 	start_time = time.time()
 
