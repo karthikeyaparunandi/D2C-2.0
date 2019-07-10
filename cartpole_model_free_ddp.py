@@ -7,11 +7,9 @@ Date: July 6, 2019
 #!/usr/bin/env python
 
 import numpy as np
-import gym
 from model_free_DDP import DDP
 import time
 from mujoco_py import load_model_from_path, MjSim, MjViewer
-from casadi import *
 from ltv_sys_id import ltv_sys_id_class
 import copy
 
@@ -26,9 +24,10 @@ class model_free_cartpole_DDP(DDP, ltv_sys_id_class):
 		self.Q = Q
 		self.Q_final = Q_final
 		self.R = R
+		n_substeps = 1
 
 		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, alpha, horizon, initial_state, final_state)
-		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=50)
+		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_substeps, n_samples=50)
 
 	def state_output(self, state):
 		'''
@@ -62,7 +61,7 @@ class model_free_cartpole_DDP(DDP, ltv_sys_id_class):
 		if path is None:
 			
 			for t in range(0, self.N):
-				self.U_p[t] = np.random.normal(0, 0.001, (self.n_u, 1))#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
+				self.U_p[t] = np.random.normal(0, 0.01, (self.n_u, 1))#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
 			
 			np.copyto(self.U_p_temp, self.U_p)
 			
@@ -89,14 +88,16 @@ if __name__=="__main__":
 	Q = 10*np.array([[2, 0, 0, 0],[0, 8, 0, 0],[0, 0, .2, 0],[0, 0, 0, 0.3]])
 	Q_final = 700*np.array([[2, 0, 0, 0],[0, 8, 0, 0],[0, 0, 1, 0],[0, 0, 0, 1]])
 	R = .001*np.ones((1,1))
-	alpha = 0.3
+	alpha = 0.4
+	
 	'''
 	W_x_LQR = 10*np.eye(2)
 	W_u_LQR = 2*np.eye(1)
 	W_x_LQR_f = 100*np.eye(2)
 	'''
+
 	# Declare the initial state and the final state in the problem
-	initial_state = np.array([[0], [-0.5], [0], [0]])
+	initial_state = np.array([[0], [np.pi-0.3], [0], [0]])
 	final_state = np.array([[0], [0], [0], [0]])#np.zeros((2,1))
 
 	# Initiate the above class that contains objects specific to this problem
@@ -112,7 +113,7 @@ if __name__=="__main__":
 	# Test the obtained policy
 	cartpole.test_episode()
 
-	print(cartpole.X_p)
+	print(cartpole.X_p[-1])
 	
 	# Plot the episodic cost during the training
 	cartpole.plot_episodic_cost_history()

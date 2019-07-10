@@ -7,7 +7,6 @@ Date: July 6, 2019
 #!/usr/bin/env python
 
 import numpy as np
-import gym
 from model_free_DDP import DDP
 import time
 from mujoco_py import load_model_from_path, MjSim, MjViewer
@@ -26,7 +25,7 @@ class pendulum_D2C_DDP(DDP, ltv_sys_id_class):
 		self.R = R
 
 		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, alpha, horizon, initial_state, final_state)
-		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=25)
+		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=10)
 
 	def state_output(self, state):
 		'''
@@ -78,7 +77,8 @@ if __name__=="__main__":
 
 	# Path of the model file
 	MODEL_XML = "/home/karthikeya/Documents/research/DDPG_D2C/libraries/gym/gym/envs/mujoco/assets/pendulum.xml"
-	
+	path_to_file = "/home/karthikeya/Documents/research/model_free_DDP/pendulum_policy.txt"
+
 	# Declare other parameters associated with the problem statement
 	horizon = 30
 	state_dimemsion = 2
@@ -95,7 +95,7 @@ if __name__=="__main__":
 	W_x_LQR_f = 100*np.eye(2)
 	'''
 	# Declare the initial state and the final state in the problem
-	initial_state = np.array([[-np.pi/2],[0]])
+	initial_state = np.array([[np.pi/2+1],[0]])
 	final_state = np.array([[0], [0]])#np.zeros((2,1))
 
 	# Initiate the above class that contains objects specific to this problem
@@ -109,9 +109,10 @@ if __name__=="__main__":
 	print("Time taken: ", time.time() - start_time)
 	
 	# Test the obtained policy
-	D2C_pendulum.test_episode()
-
-	print(D2C_pendulum.X_p)
+	D2C_pendulum.save_policy(path_to_file)
+	D2C_pendulum.test_episode(1, path_to_file)
+	
+	print(D2C_pendulum.X_p[-1])
 	
 	# Plot the episodic cost during the training
 	D2C_pendulum.plot_episodic_cost_history()

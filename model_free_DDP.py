@@ -7,12 +7,10 @@ Date: July 6, 2019
 #!/usr/bin/env python
  #Assumption 1 : costs are quadratic functions
 
-# Optimization library - though no optimization involved, this is used to import DM, jacobian and hessian calculation functionalities from casadi
 from __future__ import division
 
 # Numerics
 import numpy as np
-import math
 import time
 # Parameters
 #import params
@@ -24,19 +22,24 @@ class DDP(object):
 
 	def __init__(self, MODEL_XML, n_x, n_u, alpha, horizon, initial_state, final_state):
 
-		self.X_p_0, self.X_g = initial_state, final_state
+		self.X_p_0 = initial_state
+		self.X_g   = final_state
 
-		self.n_x, self.n_u, self.N = n_x, n_u, horizon
-		
+		self.n_x = n_x
+		self.n_u = n_u
+		self.N = horizon
+
 		self.alpha = alpha
 
 		
 		# Define nominal state trajectory
-		self.X_p, self.X_p_temp = np.zeros((self.N, self.n_x, 1)), np.zeros((self.N, self.n_x, 1))
-		 
+		self.X_p = np.zeros((self.N, self.n_x, 1))
+		self.X_p_temp = np.zeros((self.N, self.n_x, 1))
+
 		# Define nominal control trajectory
-		self.U_p, self.U_p_temp = np.zeros((self.N, self.n_u, 1)), np.zeros((self.N, self.n_u, 1))
-		
+		self.U_p  = np.zeros((self.N, self.n_u, 1))
+		self.U_p_temp = np.zeros((self.N, self.n_u, 1))
+
 		# Define sensitivity matrices
 		self.K = np.zeros((self.N, self.n_u, self.n_x))
 		self.k = np.zeros((self.N, self.n_u, 1))
@@ -52,7 +55,7 @@ class DDP(object):
 		self.delta_0 = 2
 		self.delta = 1	#self.delta_0
 		
-		self.c_1 = -1e-1
+		self.c_1 = -6e-1
 		self.count = 0
 		self.episodic_cost_history = []
 
@@ -60,12 +63,16 @@ class DDP(object):
 
 		self.initialize_traj()
 		
-		for j in range(60):	
+		for j in range(200):	
 
-			if j<300:
+			if j<1:
+				
 				b_pass_success_flag, del_J_alpha = self.backward_pass()
+
 			else:
-				b_pass_success_flag, del_J_alpha = self.backward_pass(activate_second_order_dynamics=1)
+
+				b_pass_success_flag, del_J_alpha = self.backward_pass(activate_second_order_dynamics=0)
+
 			if b_pass_success_flag == 1:
 
 				self.regularization_dec_mu()
@@ -96,16 +103,23 @@ class DDP(object):
 				#self.alpha = self.alpha
 
 			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))	
-		#print(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))
 		
 
 	def backward_pass(self, activate_second_order_dynamics=0):
 
-		k_temp, K_temp, V_x_temp, V_xx_temp = np.copy(self.k), np.copy(self.K), np.copy(self.V_x), np.copy(self.V_xx)
-		
-		self.V_x[self.N-1] = self.l_x_f(self.X_p[self.N-1])	
+		################## defining local functions & variables for faster access ################
 
-		np.copyto(self.V_xx[self.N-1], 2*self.Q_final)
+		partials_list = self.partials_list
+		k = np.copy(self.k)
+		K = np.copy(self.K)
+		V_x = np.copy(self.V_x)
+		V_xx = np.copy(self.V_xx)
+
+		##########################################################################################
+		
+		V_x[self.N-1] = self.l_x_f(self.X_p[self.N-1])	
+
+		np.copyto(V_xx[self.N-1], 2*self.Q_final)
 
 		#initialize before forward pass
 		del_J_alpha = 0
@@ -113,21 +127,26 @@ class DDP(object):
 		for t in range(self.N-1, -1, -1):
 			
 			if t>0:
-				Q_x, Q_u, Q_xx, Q_uu, Q_ux = self.partials_list(self.X_p[t-1], self.U_p[t], self.V_x[t], self.V_xx[t], activate_second_order_dynamics)
+				Q_x, Q_u, Q_xx, Q_uu, Q_ux = partials_list(self.X_p[t-1], self.U_p[t], V_x[t], V_xx[t], activate_second_order_dynamics)
 
 			elif t==0:
-				Q_x, Q_u, Q_xx, Q_uu, Q_ux = self.partials_list(self.X_p_0, self.U_p[0], self.V_x[0], self.V_xx[0], activate_second_order_dynamics)
+				Q_x, Q_u, Q_xx, Q_uu, Q_ux = partials_list(self.X_p_0, self.U_p[0], V_x[0], V_xx[0], activate_second_order_dynamics)
 
-			if np.all(np.linalg.eigvals(Q_uu) <= 0):
+			try:
+				# If a matrix cannot be positive-definite, that means it cannot be cholesky decomposed
+				np.linalg.cholesky(Q_uu)
+
+			except np.linalg.LinAlgError:
 
 				print("FAILED! Q_uu is not Positive definite at t=",t)
 
 				b_pass_success_flag = 0
 
-				np.copyto(self.k, k_temp)
-				np.copyto(self.K, K_temp)
-				np.copyto(self.V_x, V_x_temp)
-				np.copyto(self.V_xx, V_xx_temp)
+				# If Q_uu is not positive definite, revert to the earlier values 
+				np.copyto(k, self.k)
+				np.copyto(K, self.K)
+				np.copyto(V_x, self.V_x)
+				np.copyto(V_xx, self.V_xx)
 				
 				break
 
@@ -136,12 +155,24 @@ class DDP(object):
 				b_pass_success_flag = 1
 				
 				# control-limited as follows
-				self.k[t], self.K[t] = -(np.linalg.inv(Q_uu) @ Q_u), -(np.linalg.inv(Q_uu) @ Q_ux)
-				
-				del_J_alpha += -self.alpha*((self.k[t].T) @ Q_u) - 0.5*self.alpha**2 * ((self.k[t].T) @ (Q_uu @ self.k[t]))
+				k[t] = -(np.linalg.inv(Q_uu) @ Q_u)
+				K[t] = -(np.linalg.inv(Q_uu) @ Q_ux)
+
+				del_J_alpha += -self.alpha*((k[t].T) @ Q_u) - 0.5*self.alpha**2 * ((k[t].T) @ (Q_uu @ k[t]))
 				
 				if t>0:
-					self.V_x[t-1], self.V_xx[t-1] = Q_x + (self.K[t].T) @ (Q_uu @ self.k[t]) + ((self.K[t].T) @ Q_u) + ((Q_ux.T) @ self.k[t]), Q_xx + ((self.K[t].T) @ (Q_uu @ self.K[t])) + ((self.K[t].T) @ Q_ux) + ((Q_ux.T) @ self.K[t])
+					V_x[t-1] = Q_x + (K[t].T) @ (Q_uu @ k[t]) + ((K[t].T) @ Q_u) + ((Q_ux.T) @ k[t])
+					V_xx[t-1] = Q_xx + ((K[t].T) @ (Q_uu @ K[t])) + ((K[t].T) @ Q_ux) + ((Q_ux.T) @ K[t])
+
+
+		######################### Update the new gains ##############################################
+
+		np.copyto(self.k, k)
+		np.copyto(self.K, K)
+		np.copyto(self.V_x, V_x)
+		np.copyto(self.V_xx, V_xx)
+		
+		#############################################################################################
 
 		self.count += 1
 
@@ -179,41 +210,50 @@ class DDP(object):
 
 
 
-	def partials_list(self, x, u, V_x_next, V_xx_next, activate_second_order_dynamics=0):
+	def partials_list(self, x, u, V_x_next, V_xx_next, activate_second_order_dynamics):
 
-		AB, V_x_F_XU_XU = self.sys_id(x, u, V_x_=V_x_next)
+		AB, V_x_F_XU_XU = self.sys_id(x, u, central_diff=1, activate_second_order=activate_second_order_dynamics, V_x_=V_x_next)
 		#print(V_x_F_XU_XU[:self.n_x, :self.n_x])
 		# print("hi")
 		# print(V_x_F_XU_XU[self.n_u:self.n_x + self.n_u, self.n_x:self.n_x + self.n_u])
 		# print(V_x_F_XU_XU[self.n_x:self.n_x + self.n_u, self.n_u:self.n_x + self.n_u])
 		# print("bye")
 
-		F_x, F_u = np.copy(AB[:, 0:self.n_x]), np.copy(AB[:, self.n_x:])
+		F_x = np.copy(AB[:, 0:self.n_x])
+		F_u = np.copy(AB[:, self.n_x:])
 		
-		Q_x, Q_u = self.l_x(x) + ((F_x.T) @ V_x_next), self.l_u(u) + ((F_u.T) @ V_x_next)
-		
+		Q_x = self.l_x(x) + ((F_x.T) @ V_x_next)
+		Q_u = self.l_u(u) + ((F_u.T) @ V_x_next)
+
 		Q_xx = 2*self.Q + ((F_x.T) @ (V_xx_next @ F_x)) 
 		Q_ux = (F_u.T) @ (V_xx_next @ F_x) 
 		Q_uu = 2*self.R + (F_u.T) @ (V_xx_next @ F_u) 
 
 		if(activate_second_order_dynamics):
+
 			Q_xx +=  V_x_F_XU_XU[:self.n_x, :self.n_x]  
 			Q_ux +=  0.5*(V_x_F_XU_XU[self.n_x:self.n_x + self.n_u, :self.n_x ] + V_x_F_XU_XU[:self.n_x, self.n_x:self.n_x + self.n_u].T)
 			Q_uu +=  V_x_F_XU_XU[self.n_x:self.n_x + self.n_u, self.n_x:self.n_x + self.n_u]
 
+
 		return Q_x, Q_u, Q_xx, Q_uu, Q_ux
+
+
 
 	def forward_pass_sim(self, render=0):
 		
-		#self.sim.reset()
-		#self.sim.set_state(MjSimState(self.sim.get_state().time, np.array([-9*np.pi/10]), np.array([0]), self.sim.get_state().act, self.sim.get_state().udd_state))
+		################## defining local functions & variables for faster access ################
+
+		sim = self.sim
 		
-		self.sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.X_p_0.flatten()]))
+		##########################################################################################
+		
+		sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.X_p_0.flatten()]))
 
 
 		for t in range(0, self.N):
 			
-			self.sim.forward()
+			sim.forward()
 
 			if t==0:
 
@@ -223,12 +263,12 @@ class DDP(object):
 
 				self.U_p[t] = self.U_p_temp[t] + self.alpha*self.k[t] + (self.K[t] @ (self.X_p[t-1] - self.X_p_temp[t-1])) 
 			
-			self.sim.data.ctrl[:] = self.U_p[t].flatten()
-			self.sim.step()
-			self.X_p[t] = self.state_output(self.sim.get_state())
+			sim.data.ctrl[:] = self.U_p[t].flatten()
+			sim.step()
+			self.X_p[t] = self.state_output(sim.get_state())
 
 			if render:
-				self.sim.render(mode='window')
+				sim.render(mode='window')
 
 	
 	def cost(self, state, control):
@@ -239,37 +279,43 @@ class DDP(object):
 		# initial guess for the trajectory
 		pass
 
-	def test_episode(self, path=None):
+	def test_episode(self, render=0, path=None):
+		
+		'''
+			Test the episode using the current policy if no path is passed. If a path is mentioned, it simulates the controls from that path
+		'''
 		
 		if path is None:
+		
 			self.forward_pass_sim(render=1)
+		
 		else:
-			pass
-			# self.sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.X_p_0.flatten()]))
+		
+			self.sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.X_p_0.flatten()]))
 			
-			# with open(path) as f:
-			# 	arrays = [map(float, line.split('\n')) for line in f]
-			# #f = open(path)
-			# #U = np.loadtxt(path)
-			# #U = f.readlines()
-			# for t in range(0, self.N):
-			# 	print(U[t])
-			# 	self.sim.forward()
+			with open(path) as f:
+				U = json.load(f)
 
-			# 	self.sim.data.ctrl[:] = np.array(U[t]).flatten()
-			# 	self.sim.step()
-			# 	#self.X_p[t] = self.state_output(self.sim.get_state())
+			for i in range(0, self.N):
+				
+				self.sim.forward()
+
+				self.sim.data.ctrl[:] = np.array(U[str(i)]).flatten()
+				self.sim.step()
+				
+				if render:
+					self.sim.render(mode='window')
+
 
 
 	def calculate_total_cost(self, initial_state, state_traj, control_traj, horizon):
 
+		# assign the function to a local function variable
+		incremental_cost = self.cost
+
 		#initialize total cost
-		cost_total = self.cost(initial_state, control_traj[0])
-
-		for t in range(0, horizon-1):
-
-			cost_total += self.cost(state_traj[t], control_traj[t+1])
-
+		cost_total = incremental_cost(initial_state, control_traj[0])
+		cost_total += sum(incremental_cost(state_traj[t], control_traj[t+1]) for t in range(0, horizon-1))
 		cost_total += self.cost_final(state_traj[horizon-1])
 
 		return cost_total
@@ -283,6 +329,7 @@ class DDP(object):
 		self.mu = np.maximum(self.mu_min, self.mu*self.delta)
 
 		if self.mu > self.mu_max:
+
 			self.mu = self.mu_max
 
 
@@ -295,6 +342,7 @@ class DDP(object):
 		self.delta = np.minimum(1/self.delta_0, self.delta/self.delta_0)
 
 		if self.mu*self.delta > self.mu_min:
+
 			self.mu = self.mu*self.delta
 
 		else:
@@ -325,12 +373,13 @@ class DDP(object):
 	def save_policy(self, path_to_file):
 
 		U = {}
+
 		for t in range(0, self.N):
 			
-			U[t] = self.U_p[t]
+			U[t] = np.ndarray.tolist(self.U_p[t])
 			
-
 		with open(path_to_file, 'w') as outfile:  
+
 			json.dump(U, outfile)
 
 

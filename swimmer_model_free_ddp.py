@@ -1,17 +1,15 @@
 '''
 copyright @ Karthikeya S Parunandi - karthikeyasharma91@gmail.com
-Model free DDP method with a simple pendulum experiment in MuJoCo simulator.
+Model free DDP method with a 3-link swimmer experiment in MuJoCo simulator.
 
 Date: July 6, 2019
 '''
 #!/usr/bin/env python
 
 import numpy as np
-import gym
 from model_free_DDP import DDP
 import time
 from mujoco_py import load_model_from_path, MjSim, MjViewer
-from casadi import *
 from ltv_sys_id import ltv_sys_id_class
 
 
@@ -84,9 +82,9 @@ if __name__=="__main__":
 
 	Q = 9*np.diag([1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
 	Q_final = 900*np.diag([1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
-	R = .05*np.diag([2, 2])
+	R = .005*np.diag([2, 2])
 	
-	alpha = 0.4
+	alpha = 0.45
 	# Declare the initial state and the final state in the problem
 	initial_state = np.zeros((10,1))
 	final_state = np.array([[0.5], [-0.6], [0], [0], [0], [0], [0], [0], [0] ,[0]])
@@ -102,8 +100,8 @@ if __name__=="__main__":
 	print("Time taken: ", time.time() - start_time)
 	
 	# Test the obtained policy
-	#D2C_pendulum.test_episode('swimmer_policy_1json.txt')
-	#D2C_pendulum.save_policy(path_to_file)
+	#swimmer.test_episode(1, path_to_file)
+	swimmer.save_policy(path_to_file)
 	print(swimmer.X_p[-1])
 	
 	# Plot the episodic cost during the training
