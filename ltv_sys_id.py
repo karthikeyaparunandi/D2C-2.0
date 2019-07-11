@@ -59,12 +59,11 @@ class ltv_sys_id_class(object):
 			assert (central_diff == activate_second_order)
 			assert V_x_ is not None
 
-			V_x_ = np.tile(V_x_.T, (self.n_samples, 1))
 			
 			Z = (F_X_f + F_X_b - 2 * simulate((x_t.T), (u_t.T))).T
-			V_x_F_XU_XU = (Cov_inv @ ((XU.T @ (V_x_ @ Z)) @ XU)) @ Cov_inv
+			print((V_x_.T @ Z).shape)
+			V_x_F_XU_XU = (Cov_inv @ ((XU.T @ (V_x_.T @ Z)) @ XU)) @ Cov_inv
 
-		#print(F_XU.shape)
 		return F_XU, V_x_F_XU_XU	#(n_samples*self.sigma**2)
 
 
@@ -95,7 +94,9 @@ class ltv_sys_id_class(object):
 
 		return np.asarray(X_next)[:,:,0]
 	
+	
 	def forward_simulate(self, sim, x, u):
+
 		'''
 			Function to simulate a single input and a single current state
 			Note : THe initial time is set to be zero. So, this can only be used for independent simulations

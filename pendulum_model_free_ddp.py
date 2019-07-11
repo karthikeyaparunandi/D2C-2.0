@@ -25,7 +25,7 @@ class pendulum_D2C_DDP(DDP, ltv_sys_id_class):
 		self.R = R
 
 		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, alpha, horizon, initial_state, final_state)
-		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=10)
+		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=5)
 
 	def state_output(self, state):
 		'''

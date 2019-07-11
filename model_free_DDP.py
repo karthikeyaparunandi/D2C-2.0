@@ -63,15 +63,15 @@ class DDP(object):
 
 		self.initialize_traj()
 		
-		for j in range(180):	
+		for j in range(20):	
 
-			if j<1:
+			if j<3:
 				
 				b_pass_success_flag, del_J_alpha = self.backward_pass()
 
 			else:
 
-				b_pass_success_flag, del_J_alpha = self.backward_pass(activate_second_order_dynamics=0)
+				b_pass_success_flag, del_J_alpha = self.backward_pass(activate_second_order_dynamics=1)
 
 			if b_pass_success_flag == 1:
 
@@ -231,7 +231,7 @@ class DDP(object):
 		Q_uu = 2*self.R + (F_u.T) @ (V_xx_next @ F_u) 
 
 		if(activate_second_order_dynamics):
-
+			#print(V_x_F_XU_XU[:self.n_x, :self.n_x])
 			Q_xx +=  V_x_F_XU_XU[:self.n_x, :self.n_x]  
 			Q_ux +=  0.5*(V_x_F_XU_XU[self.n_x:self.n_x + self.n_u, :self.n_x ] + V_x_F_XU_XU[:self.n_x, self.n_x:self.n_x + self.n_u].T)
 			Q_uu +=  V_x_F_XU_XU[self.n_x:self.n_x + self.n_u, self.n_x:self.n_x + self.n_u]
