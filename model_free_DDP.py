@@ -60,18 +60,23 @@ class DDP(object):
 		self.episodic_cost_history = []
 
 	def iterate_ddp(self):
+		
+		'''
+			Main function that carries out the algorithm at higher level
 
+		'''
+		# Initialize the trajectory with the desired initial guess
 		self.initialize_traj()
 		
-		for j in range(20):	
+		for j in range(10):	
 
-			if j<3:
+			if j<0:
 				
 				b_pass_success_flag, del_J_alpha = self.backward_pass()
 
 			else:
 
-				b_pass_success_flag, del_J_alpha = self.backward_pass(activate_second_order_dynamics=1)
+				b_pass_success_flag, del_J_alpha = self.backward_pass(activate_second_order_dynamics=0)
 
 			if b_pass_success_flag == 1:
 
@@ -101,7 +106,7 @@ class DDP(object):
 			#else:
 				
 				#self.alpha = self.alpha
-
+			
 			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))	
 		
 
@@ -155,9 +160,10 @@ class DDP(object):
 
 				b_pass_success_flag = 1
 				
-				# control-limited as follows
-				k[t] = -(np.linalg.inv(Q_uu) @ Q_u)
-				K[t] = -(np.linalg.inv(Q_uu) @ Q_ux)
+				# update gains as follows
+				Q_uu_inv = np.linalg.inv(Q_uu)
+				k[t] = -(Q_uu_inv @ Q_u)
+				K[t] = -(Q_uu_inv @ Q_ux)
 
 				del_J_alpha += -self.alpha*((k[t].T) @ Q_u) - 0.5*self.alpha**2 * ((k[t].T) @ (Q_uu @ k[t]))
 				
@@ -211,17 +217,19 @@ class DDP(object):
 
 
 
-	def partials_list(self, x, u, V_x_next, V_xx_next, activate_second_order_dynamics):
+	def partials_list(self, x, u, V_x_next, V_xx_next, activate_second_order_dynamics):	
 
+		################## defining local functions / variables for faster access ################
+
+		n_x = self.n_x
+		n_u = self.n_u
+
+		##########################################################################################
+		
 		AB, V_x_F_XU_XU = self.sys_id(x, u, central_diff=1, activate_second_order=activate_second_order_dynamics, V_x_=V_x_next)
-		#print(V_x_F_XU_XU[:self.n_x, :self.n_x])
-		# print("hi")
-		# print(V_x_F_XU_XU[self.n_u:self.n_x + self.n_u, self.n_x:self.n_x + self.n_u])
-		# print(V_x_F_XU_XU[self.n_x:self.n_x + self.n_u, self.n_u:self.n_x + self.n_u])
-		# print("bye")
-
-		F_x = np.copy(AB[:, 0:self.n_x])
-		F_u = np.copy(AB[:, self.n_x:])
+		
+		F_x = np.copy(AB[:, 0:n_x])
+		F_u = np.copy(AB[:, n_x:])
 		
 		Q_x = self.l_x(x) + ((F_x.T) @ V_x_next)
 		Q_u = self.l_u(u) + ((F_u.T) @ V_x_next)
@@ -231,10 +239,10 @@ class DDP(object):
 		Q_uu = 2*self.R + (F_u.T) @ (V_xx_next @ F_u) 
 
 		if(activate_second_order_dynamics):
-			#print(V_x_F_XU_XU[:self.n_x, :self.n_x])
-			Q_xx +=  V_x_F_XU_XU[:self.n_x, :self.n_x]  
-			Q_ux +=  0.5*(V_x_F_XU_XU[self.n_x:self.n_x + self.n_u, :self.n_x ] + V_x_F_XU_XU[:self.n_x, self.n_x:self.n_x + self.n_u].T)
-			Q_uu +=  V_x_F_XU_XU[self.n_x:self.n_x + self.n_u, self.n_x:self.n_x + self.n_u]
+			#print(V_x_F_XU_XU)
+			Q_xx +=  V_x_F_XU_XU[:n_x, :n_x]  
+			Q_ux +=  0.5*(V_x_F_XU_XU[n_x:n_x + n_u, :n_x ] + V_x_F_XU_XU[:n_x, n_x: n_x + n_u].T)
+			Q_uu +=  V_x_F_XU_XU[n_x:n_x + n_u, n_x:n_x + n_u]
 
 
 		return Q_x, Q_u, Q_xx, Q_uu, Q_ux

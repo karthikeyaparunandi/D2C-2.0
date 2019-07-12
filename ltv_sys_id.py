@@ -35,24 +35,28 @@ class ltv_sys_id_class(object):
 
 		simulate = self.simulate
 		n_x = self.n_x
-
+		n_u = self.n_u
 		##########################################################################################
 		
-		XU = np.random.normal(0.0, self.sigma, (self.n_samples, n_x + self.n_u))
-		Cov_inv = np.linalg.inv((XU.T) @ XU)
+		XU = np.random.normal(0.0, self.sigma, (self.n_samples, n_x + n_u))
+		X_ = np.copy(XU[:, :n_x])
+		U_ = np.copy(XU[:, n_x:])
+
+		Cov_inv = (XU.T) @ XU
 		V_x_F_XU_XU = None
 
 		if central_diff:
 			
-			F_X_f = simulate((x_t.T) + XU[:, 0:n_x], (u_t.T) + XU[:, n_x:])
-			F_X_b = simulate((x_t.T) - XU[:, 0:n_x], (u_t.T) - XU[:, n_x:])
-			Y = 0.5*(F_X_f - F_X_b).T
+			F_X_f = simulate((x_t.T) + X_, (u_t.T) + U_)
+			F_X_b = simulate((x_t.T) - X_, (u_t.T) - U_)
+			Y = 0.5*(F_X_f - F_X_b)
 		
 		else:
 
-			Y = (simulate((x_t.T) + XU[:, 0:n_x], (u_t.T) + XU[:, n_x:]) - simulate((x_t.T), (u_t.T))).T
+			Y = (simulate((x_t.T) + X_, (u_t.T) + U_) - simulate((x_t.T), (u_t.T))).T
+
 			
-		F_XU = (Y @ XU) @ Cov_inv
+		F_XU = np.linalg.solve(Cov_inv, (XU.T @ Y)).T
 
 		if activate_second_order:
 
@@ -61,8 +65,19 @@ class ltv_sys_id_class(object):
 
 			
 			Z = (F_X_f + F_X_b - 2 * simulate((x_t.T), (u_t.T))).T
-			print((V_x_.T @ Z).shape)
-			V_x_F_XU_XU = (Cov_inv @ ((XU.T @ (V_x_.T @ Z)) @ XU)) @ Cov_inv
+
+			D_XU = np.zeros(((n_x + n_u)**2, self.n_samples))
+			D_XU[: n_x**2] = self.khatri_rao(X_.T, X_.T)
+			D_XU[n_x**2 : n_x**2 + n_x*n_u] = self.khatri_rao(X_.T, U_.T)
+			D_XU[n_x**2 + n_x*n_u : n_x**2 + 2*n_x*n_u] = self.khatri_rao(U_.T, X_.T)
+			D_XU[n_x**2 + 2*n_x*n_u : (n_x + n_u)**2] = self.khatri_rao(U_.T, U_.T)
+			a = (10**14 * D_XU @ D_XU.T)
+			
+			print(D_XU, np.linalg.solve())#, np.linalg.inv(a[:3, :3]))
+
+			V_x_F_XU_XU = (((V_x_.T @ Z) @ D_XU.T) @ np.linalg.inv(D_XU @ D_XU.T)).reshape((n_x + n_u, n_x + n_u))
+
+			print(V_x_F_XU_XU)
 
 		return F_XU, V_x_F_XU_XU	#(n_samples*self.sigma**2)
 
@@ -131,3 +146,34 @@ class ltv_sys_id_class(object):
 	def state_output(state):
 
 		pass
+
+	def khatri_rao(self, B, C):
+	    """
+	    Calculate the Khatri-Rao product of 2D matrices. Assumes blocks to
+	    be the columns of both matrices.
+	 
+	    See
+	    http://gmao.gsfc.nasa.gov/events/adjoint_workshop-8/present/Friday/Dance.pdf
+	    for more details.
+	 
+	    Parameters
+	    ----------
+	    B : ndarray, shape = [n, p]
+	    C : ndarray, shape = [m, p]
+	 
+	 
+	    Returns
+	    -------
+	    A : ndarray, shape = [m * n, p]
+	 
+	    """
+	    if B.ndim != 2 or C.ndim != 2:
+	        raise ValueError("B and C must have 2 dimensions")
+	 
+	    n, p = B.shape
+	    m, pC = C.shape
+	 
+	    if p != pC:
+	        raise ValueError("B and C must have the same number of columns")
+	 
+	    return np.einsum('ij, kj -> ikj', B, C).reshape(m * n, p)

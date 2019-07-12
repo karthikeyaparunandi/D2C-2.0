@@ -11,5 +11,5 @@ FInal state: [[ 0.49595238]
 
 Time taken: 440.5341725349426 seconds
 N iterations - 180
-
+Run on surfacebook
 
