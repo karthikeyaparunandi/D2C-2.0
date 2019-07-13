@@ -49,17 +49,17 @@ class DDP(object):
 
 		
 		# regularization parameter
-		self.mu_min = 2
-		self.mu = 1000	#10**(-6)
+		self.mu_min = 1e-3
+		self.mu = 1e-3	#10**(-6)
 		self.mu_max = 10**(8)
 		self.delta_0 = 2
-		self.delta = 1	#self.delta_0
+		self.delta = self.delta_0
 		
 		self.c_1 = -6e-1
 		self.count = 0
 		self.episodic_cost_history = []
 
-	def iterate_ddp(self):
+	def iterate_ddp(self, n_iterations):
 		
 		'''
 			Main function that carries out the algorithm at higher level
@@ -68,9 +68,10 @@ class DDP(object):
 		# Initialize the trajectory with the desired initial guess
 		self.initialize_traj()
 		
-		for j in range(10):	
-
-			if j<0:
+		for j in range(n_iterations):	
+			print(j)
+			
+			if j<2:
 				
 				b_pass_success_flag, del_J_alpha = self.backward_pass()
 
@@ -101,14 +102,13 @@ class DDP(object):
 				self.regularization_inc_mu()
 				print("This iteration %{} is doomed".format(j))
 
-			if j<5:
+			if j<10:
 				self.alpha = self.alpha*0.9
 			#else:
 				
 				#self.alpha = self.alpha
 			
 			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))	
-		
 
 
 	def backward_pass(self, activate_second_order_dynamics=0):
@@ -234,10 +234,11 @@ class DDP(object):
 		Q_x = self.l_x(x) + ((F_x.T) @ V_x_next)
 		Q_u = self.l_u(u) + ((F_u.T) @ V_x_next)
 
-		Q_xx = 2*self.Q + ((F_x.T) @ (V_xx_next @ F_x)) 
-		Q_ux = (F_u.T) @ (V_xx_next @ F_x) 
-		Q_uu = 2*self.R + (F_u.T) @ (V_xx_next @ F_u) 
-
+		Q_xx = 2*self.Q + ((F_x.T) @ ((V_xx_next+self.mu*np.identity(V_xx_next.shape[0]))  @ F_x)) 
+		#print(self.mu*np.identity(V_xx_next.shape[0]))
+		Q_ux = (F_u.T) @ ((V_xx_next+ self.mu*np.identity(V_xx_next.shape[0])) @ F_x)
+		Q_uu = 2*self.R + (F_u.T) @ ((V_xx_next+ self.mu*np.identity(V_xx_next.shape[0])) @ F_u) + self.mu*np.identity(n_u)
+		#print(F_u.T @ (self.mu*np.identity(V_xx_next.shape[0]) @ F_u))
 		if(activate_second_order_dynamics):
 			#print(V_x_F_XU_XU)
 			Q_xx +=  V_x_F_XU_XU[:n_x, :n_x]  

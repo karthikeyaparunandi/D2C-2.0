@@ -66,19 +66,25 @@ class ltv_sys_id_class(object):
 			
 			Z = (F_X_f + F_X_b - 2 * simulate((x_t.T), (u_t.T))).T
 
-			D_XU = np.zeros(((n_x + n_u)**2, self.n_samples))
-			D_XU[: n_x**2] = self.khatri_rao(X_.T, X_.T)
-			D_XU[n_x**2 : n_x**2 + n_x*n_u] = self.khatri_rao(X_.T, U_.T)
-			D_XU[n_x**2 + n_x*n_u : n_x**2 + 2*n_x*n_u] = self.khatri_rao(U_.T, X_.T)
-			D_XU[n_x**2 + 2*n_x*n_u : (n_x + n_u)**2] = self.khatri_rao(U_.T, U_.T)
-			a = (10**14 * D_XU @ D_XU.T)
+			D_XU = self.khatri_rao(XU.T, XU.T)
 			
-			print(D_XU, np.linalg.solve())#, np.linalg.inv(a[:3, :3]))
-
-			V_x_F_XU_XU = (((V_x_.T @ Z) @ D_XU.T) @ np.linalg.inv(D_XU @ D_XU.T)).reshape((n_x + n_u, n_x + n_u))
-
-			print(V_x_F_XU_XU)
-
+			triu_indices = np.triu_indices((n_x + n_u))
+			linear_triu_indices = (n_x+n_u)*triu_indices[0] + triu_indices[1]
+			
+			D_XU_lin = np.copy(D_XU[linear_triu_indices,:])
+			#print(10**10 * D_XU_lin @ D_XU_lin.T)
+			V_x_F_XU_XU_ = np.linalg.solve(10**12 * D_XU_lin @ D_XU_lin.T, 10**(12)*D_XU_lin @ (V_x_.T @ Z).T)
+			D = np.zeros((n_x+n_u, n_x+n_u))
+			# for ind, v in zip(list(np.array(triu_indices).T), V_x_F_XU_XU_):
+			# 	V_x_F_XU_XU[ind] = v
+			j=0
+			for ind in np.array(triu_indices).T:
+				D[ind[0]][ind[1]] = V_x_F_XU_XU_[j]
+				j += 1
+			
+			V_x_F_XU_XU = (D + D.T)/2
+			
+			
 		return F_XU, V_x_F_XU_XU	#(n_samples*self.sigma**2)
 
 
@@ -109,7 +115,9 @@ class ltv_sys_id_class(object):
 
 		return np.asarray(X_next)[:,:,0]
 	
-	
+	def vec2symm(self, ):
+		pass
+
 	def forward_simulate(self, sim, x, u):
 
 		'''

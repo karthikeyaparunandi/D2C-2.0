@@ -25,7 +25,7 @@ class model_free_swimmer_DDP(DDP, ltv_sys_id_class):
 		self.R = R
 
 		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, alpha, horizon, initial_state, final_state)
-		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=25)
+		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=50)
 
 	def state_output(self, state):
 		'''
@@ -85,8 +85,9 @@ if __name__=="__main__":
 	Q = 9*np.diag([1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
 	Q_final = 900*np.diag([1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
 	R = .005*np.diag([2, 2])
-	
-	alpha = 0.45
+	n_iterations = 120
+
+	alpha = 0.9
 	# Declare the initial state and the final state in the problem
 	initial_state = np.zeros((10,1))
 	final_state = np.array([[0.5], [-0.6], [0], [0], [0], [0], [0], [0], [0] ,[0]])
@@ -97,7 +98,7 @@ if __name__=="__main__":
 	start_time = time.time()
 
 	# Run the DDP algorithm
-	swimmer.iterate_ddp()
+	swimmer.iterate_ddp(n_iterations)
 	
 	print("Time taken: ", time.time() - start_time)
 	

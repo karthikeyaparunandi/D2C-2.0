@@ -25,7 +25,7 @@ class pendulum_D2C_DDP(DDP, ltv_sys_id_class):
 		self.R = R
 
 		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, alpha, horizon, initial_state, final_state)
-		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=5)
+		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=10)
 
 	def state_output(self, state):
 		'''
@@ -88,6 +88,7 @@ if __name__=="__main__":
 	Q_final = 900*np.array([[1,0],[0,0.1]])
 	R = .01*np.ones((1,1))
 	alpha = 1
+	n_iterations = 15
 	# 15 iterations
 	'''
 	W_x_LQR = 10*np.eye(2)
@@ -95,7 +96,7 @@ if __name__=="__main__":
 	W_x_LQR_f = 100*np.eye(2)
 	'''
 	# Declare the initial state and the final state in the problem
-	initial_state = np.array([[np.pi/2+1],[0]])
+	initial_state = np.array([[np.pi-0.3],[0]])
 	final_state = np.array([[0], [0]])#np.zeros((2,1))
 
 	# Initiate the above class that contains objects specific to this problem
@@ -104,7 +105,7 @@ if __name__=="__main__":
 	start_time = time.time()
 
 	# Run the DDP algorithm
-	D2C_pendulum.iterate_ddp()
+	D2C_pendulum.iterate_ddp(n_iterations)
 	
 	print("Time taken: ", time.time() - start_time)
 	

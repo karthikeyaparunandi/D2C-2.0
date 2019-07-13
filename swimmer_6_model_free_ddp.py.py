@@ -55,7 +55,7 @@ class model_free_swimmer_6_DDP(DDP, ltv_sys_id_class):
 		if path is None:
 			
 			for t in range(0, self.N):
-				self.U_p[t] = np.random.normal(0, 0.1, (self.n_u, 1))#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
+				self.U_p[t] = np.random.normal(0, 0.1, (self.n_u, 1))	#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
 			
 			np.copyto(self.U_p_temp, self.U_p)
 			
@@ -74,30 +74,32 @@ if __name__=="__main__":
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
 	MODEL_XML = "/home/karthikeya/Documents/research/DDPG_D2C/libraries/gym/gym/envs/mujoco/assets/swimmer6.xml" 
-	path_to_file = path_to_model_free_DDP+"/experiments/swimmer/exp_4/swimmer_policy.txt"
-	training_cost_data_file = path_to_model_free_DDP+"/experiments/swimmer/exp_4/training_cost_data.txt"
+	path_to_file = path_to_model_free_DDP+"/experiments/swimmer6/exp_1/swimmer_policy.txt"
+	training_cost_data_file = path_to_model_free_DDP+"/experiments/swimmer6/exp_1/training_cost_data.txt"
 
 	# Declare other parameters associated with the problem statement
 	horizon = 800
-	state_dimemsion = 10
-	control_dimension = 2
+	state_dimemsion = 16
+	control_dimension = 5
 
-	Q = 9*np.diag([1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
-	Q_final = 900*np.diag([1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
-	R = .005*np.diag([2, 2])
+	Q = 9*np.diag([1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+	Q_final = 900*np.diag([1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+	R = .005*np.diag([2, 2, 2, 2, 2])
 	
-	alpha = 0.45
+	alpha = 0.5
 	# Declare the initial state and the final state in the problem
-	initial_state = np.zeros((10,1))
-	final_state = np.array([[0.5], [-0.6], [0], [0], [0], [0], [0], [0], [0] ,[0]])
-
+	initial_state = np.zeros((16,1))
+	final_state = np.zeros((16,1))
+	final_state[0] = 0.5
+	final_state[1] = -0.6
+	n_iterations = 80
 	# Initiate the above class that contains objects specific to this problem
 	swimmer = model_free_swimmer_6_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
 	start_time = time.time()
 
 	# Run the DDP algorithm
-	swimmer.iterate_ddp()
+	swimmer.iterate_ddp(n_iterations)
 	
 	print("Time taken: ", time.time() - start_time)
 	
