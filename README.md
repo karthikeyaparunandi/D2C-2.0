@@ -1,4 +1,4 @@
-# model_free_DDP
+# Model free DDP
 This repository is an implementation of model free DDP using MuJoCo simulator
 
 Libraries needed:
