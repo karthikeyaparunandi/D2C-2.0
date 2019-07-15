@@ -69,7 +69,7 @@ class DDP(object):
 		self.initialize_traj()
 		
 		for j in range(n_iterations):	
-			print(j)
+			#print(j, self.alpha)
 			
 			if j<2:
 				
@@ -102,11 +102,11 @@ class DDP(object):
 				self.regularization_inc_mu()
 				print("This iteration %{} is doomed".format(j))
 
-			if j<10:
+			if j<2:
 				self.alpha = self.alpha*0.9
 			else:
 				self.alpha = self.alpha*0.99
-			
+			#print(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))
 			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))	
 
 
@@ -206,7 +206,7 @@ class DDP(object):
 			np.copyto(self.U_p, self.U_p_temp)
 	
 			f_pass_success_flag = 0
-			print("f",z, del_J_alpha, J_1, J_2)
+			#print("f",z, del_J_alpha, J_1, J_2)
 
 		else:
 

@@ -76,8 +76,10 @@ class pendulum_D2C_DDP(DDP, ltv_sys_id_class):
 if __name__=="__main__":
 
 	# Path of the model file
-	MODEL_XML = "/home/karthikeya/Documents/research/DDPG_D2C/libraries/gym/gym/envs/mujoco/assets/pendulum.xml"
-	path_to_file = "/home/karthikeya/Documents/research/model_free_DDP/pendulum_policy.txt"
+	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
+	MODEL_XML = path_to_model_free_DDP +"/models/pendulum.xml"
+	path_to_file = path_to_module+"/pendulum_policy.txt"
+
 
 	# Declare other parameters associated with the problem statement
 	horizon = 30

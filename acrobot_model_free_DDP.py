@@ -1,6 +1,6 @@
 '''
 copyright @ Karthikeya S Parunandi - karthikeyasharma91@gmail.com
-Model free DDP method with a 6-link humanoid experiment in MuJoCo simulator.
+Model free DDP method with a 6-link acrobot experiment in MuJoCo simulator.
 
 Date: July 6, 2019
 '''
@@ -13,7 +13,7 @@ from mujoco_py import load_model_from_path, MjSim, MjViewer
 from ltv_sys_id import ltv_sys_id_class
 
 
-class model_free_humanoid_DDP(DDP, ltv_sys_id_class):
+class model_free_acrobot_DDP(DDP, ltv_sys_id_class):
 	
 	def __init__(self, initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R):
 		
@@ -23,18 +23,24 @@ class model_free_humanoid_DDP(DDP, ltv_sys_id_class):
 		self.Q = Q
 		self.Q_final = Q_final
 		self.R = R
-		n_substeps = 2
+		n_substeps = 1
 
 		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, alpha, horizon, initial_state, final_state)
-		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_substeps, n_samples=40)
+		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_substeps, n_samples=20)
+
 
 	def state_output(self, state):
 		'''
 			Given a state in terms of Mujoco's MjSimState format, extract the state as a numpy array, after some preprocessing
 		'''
-		
-		return np.concatenate([state.qpos, state.qvel]).reshape(-1, 1)
+		#print(self.angle_normalize(state.qpos),"\n")
+		return np.concatenate([self.angle_normalize(state.qpos), state.qvel]).reshape(-1, 1)
 
+	def angle_normalize(self, x):
+		'''
+		Function to normalize the pendulum's angle from [0, Inf] to [-np.pi, np.pi]
+		'''
+		return -((-x+np.pi) % (2*np.pi)) + np.pi
 
 	def cost(self, x, u):
 		'''
@@ -56,7 +62,7 @@ class model_free_humanoid_DDP(DDP, ltv_sys_id_class):
 		if path is None:
 			
 			for t in range(0, self.N):
-				self.U_p[t] = np.random.normal(0, 0.1, (self.n_u, 1))	#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
+				self.U_p[t] = np.random.normal(0, 0.5, (self.n_u, 1))	#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
 			
 			np.copyto(self.U_p_temp, self.U_p)
 			
@@ -74,54 +80,48 @@ if __name__=="__main__":
 
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
-	MODEL_XML = path_to_model_free_DDP+"/models/humanoid.xml" 
-	path_to_file = path_to_model_free_DDP+"/experiments/humanoid/exp_1/humanoid_policy.txt"
-	training_cost_data_file = path_to_model_free_DDP+"/experiments/humanoid/exp_2/training_cost_data.txt"
+	MODEL_XML = path_to_model_free_DDP+"/models/acrobot.xml" 
+	path_to_file = path_to_model_free_DDP+"/experiments/acrobot/exp_1/acrobot_policy.txt"
+	training_cost_data_file = path_to_model_free_DDP+"/experiments/acrobot/exp_1/training_cost_data.txt"
 
 	# Declare other parameters associated with the problem statement
-	horizon = 600
-	state_dimemsion = 27
-	control_dimension = 5
+	horizon = 500
+	state_dimemsion = 4
+	control_dimension = 1
 
-	Q = 9*np.diag(np.concatenate([[1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], np.zeros((13,))]))
-	Q_final = 1500*np.diag(np.concatenate([[1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], np.zeros((13,))]))
-	R = .05*np.diag([2, 2, 2, 2, 2])
+	Q = 2*np.diag([1, .05, .01, .01])
+	Q_final = 1650*np.diag([2, .5, .12, .1])
+	R = .1*np.diag([2])
 	
-	alpha = 1
+	alpha = .3
 	# Declare the initial state and the final state in the problem
-	initial_state = np.zeros((27,1))
-	final_state = np.zeros((27,1))
-
-	initial_state[3] = 1
+	initial_state = np.array([[0], [0], [0], [0]])
 	
+	final_state = np.array([[np.pi], [0], [0], [0]])
 
-	final_state[0] = 0
-	final_state[1] = 0.4
-	final_state[2] = 0.2
-	final_state[3] = 1
-	n_iterations = 50
+	n_iterations = 70
 	# Initiate the above class that contains objects specific to this problem
-	humanoid = model_free_humanoid_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
+	acrobot = model_free_acrobot_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
 	start_time = time.time()
 
 	# Run the DDP algorithm
-	humanoid.iterate_ddp(n_iterations)
+	acrobot.iterate_ddp(n_iterations)
 	
 	print("Time taken: ", time.time() - start_time)
 	
 	# Save the episodic cost
 	with open(training_cost_data_file, 'w') as f:
-		for cost in humanoid.episodic_cost_history:
+		for cost in acrobot.episodic_cost_history:
 			f.write("%s\n" % cost)
 
 	# Test the obtained policy
-	humanoid.save_policy(path_to_file)
-	humanoid.test_episode(1, path_to_file)
+	acrobot.save_policy(path_to_file)
+	acrobot.test_episode(1, path_to_file)
 
-	print(humanoid.X_p[-1])
+	print(acrobot.X_p[-1])
 	
 	# Plot the episodic cost during the training
-	humanoid.plot_episodic_cost_history()
+	acrobot.plot_episodic_cost_history()
 
 

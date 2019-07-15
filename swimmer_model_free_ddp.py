@@ -73,7 +73,7 @@ if __name__=="__main__":
 
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
-	MODEL_XML = "/home/karthikeya/Documents/research/DDPG_D2C/libraries/gym/gym/envs/mujoco/assets/swimmer.xml"
+	MODEL_XML = path_to_model_free_DDP+"/models/swimmer.xml"
 	path_to_file = path_to_model_free_DDP+"/experiments/swimmer/sample_exp/swimmer_policy.txt"
 	training_cost_data_file = path_to_model_free_DDP+"/experiments/swimmer/sample_exp/training_cost_data.txt"
 
