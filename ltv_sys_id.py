@@ -23,7 +23,7 @@ class ltv_sys_id_class(object):
 		self.n_samples = n_samples
 
 		self.sim = MjSim(load_model_from_path(model_xml_string), nsubsteps=n_substeps)
-		print(self.sim.data.qpos, self.sim.data.qvel)
+		print(self.sim.data.qpos.shape, self.sim.data.qvel.shape, self.sim.data.ctrl.shape)
 		# print(np.concatenate([self.sim.data.qpos.flat[2:],
   #                              self.sim.data.qvel.flatten(),
   #                              self.sim.data.cinert.flatten(),

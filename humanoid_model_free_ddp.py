@@ -80,8 +80,8 @@ if __name__=="__main__":
 
 	# Declare other parameters associated with the problem statement
 	horizon = 600
-	state_dimemsion = 27
-	control_dimension = 5
+	state_dimemsion = 47
+	control_dimension = 17
 
 	Q = 9*np.diag(np.concatenate([[1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], np.zeros((13,))]))
 	Q_final = 1500*np.diag(np.concatenate([[1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], np.zeros((13,))]))
@@ -89,8 +89,8 @@ if __name__=="__main__":
 	
 	alpha = 1
 	# Declare the initial state and the final state in the problem
-	initial_state = np.zeros((27,1))
-	final_state = np.zeros((27,1))
+	initial_state = np.zeros((47,1))
+	final_state = np.zeros((47,1))
 
 	initial_state[3] = 1
 	
