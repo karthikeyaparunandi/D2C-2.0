@@ -1,0 +1,8 @@
+Time taken : 95.24 seconds
+run on surface book 2
+final state:
+[[3.13315601]
+ [0.00663425]
+ [0.07217156]
+ [0.01561163]]
+

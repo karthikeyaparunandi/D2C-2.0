@@ -62,7 +62,7 @@ class model_free_acrobot_DDP(DDP, ltv_sys_id_class):
 		if path is None:
 			
 			for t in range(0, self.N):
-				self.U_p[t] = np.random.normal(0, 0.5, (self.n_u, 1))	#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
+				self.U_p[t] = np.random.normal(0, 0.4, (self.n_u, 1))	#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
 			
 			np.copyto(self.U_p_temp, self.U_p)
 			
@@ -81,8 +81,8 @@ if __name__=="__main__":
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
 	MODEL_XML = path_to_model_free_DDP+"/models/acrobot.xml" 
-	path_to_file = path_to_model_free_DDP+"/experiments/acrobot/exp_1/acrobot_policy.txt"
-	training_cost_data_file = path_to_model_free_DDP+"/experiments/acrobot/exp_1/training_cost_data.txt"
+	path_to_file = path_to_model_free_DDP+"/experiments/acrobot/exp_2/acrobot_policy.txt"
+	training_cost_data_file = path_to_model_free_DDP+"/experiments/acrobot/exp_2/training_cost_data.txt"
 
 	# Declare other parameters associated with the problem statement
 	horizon = 500
@@ -90,7 +90,7 @@ if __name__=="__main__":
 	control_dimension = 1
 
 	Q = 2*np.diag([1, .05, .01, .01])
-	Q_final = 1650*np.diag([2, .5, .12, .1])
+	Q_final = 1500*np.diag([2, .5, .1, .1])
 	R = .1*np.diag([2])
 	
 	alpha = .3
@@ -99,24 +99,24 @@ if __name__=="__main__":
 	
 	final_state = np.array([[np.pi], [0], [0], [0]])
 
-	n_iterations = 70
+	n_iterations = 90
 	# Initiate the above class that contains objects specific to this problem
 	acrobot = model_free_acrobot_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
 	start_time = time.time()
 
 	# Run the DDP algorithm
-	acrobot.iterate_ddp(n_iterations)
+	#acrobot.iterate_ddp(n_iterations)
 	
-	print("Time taken: ", time.time() - start_time)
+	# print("Time taken: ", time.time() - start_time)
 	
-	# Save the episodic cost
-	with open(training_cost_data_file, 'w') as f:
-		for cost in acrobot.episodic_cost_history:
-			f.write("%s\n" % cost)
+	# # Save the episodic cost
+	# with open(training_cost_data_file, 'w') as f:
+	# 	for cost in acrobot.episodic_cost_history:
+	# 		f.write("%s\n" % cost)
 
-	# Test the obtained policy
-	acrobot.save_policy(path_to_file)
+	# # Test the obtained policy
+	# acrobot.save_policy(path_to_file)
 	acrobot.test_episode(1, path_to_file)
 
 	print(acrobot.X_p[-1])
