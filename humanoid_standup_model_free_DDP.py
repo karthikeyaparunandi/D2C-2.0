@@ -1,6 +1,6 @@
 '''
 copyright @ Karthikeya S Parunandi - karthikeyasharma91@gmail.com
-Model free DDP method with a 6-link humanoid experiment in MuJoCo simulator.
+Model free DDP method with a 6-link humanoidstandup experiment in MuJoCo simulator.
 
 Date: July 6, 2019
 '''
@@ -13,7 +13,7 @@ from mujoco_py import load_model_from_path, MjSim, MjViewer
 from ltv_sys_id import ltv_sys_id_class
 
 
-class model_free_humanoid_DDP(DDP, ltv_sys_id_class):
+class model_free_humanoidstandup_DDP(DDP, ltv_sys_id_class):
 	
 	def __init__(self, initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R):
 		
@@ -23,10 +23,10 @@ class model_free_humanoid_DDP(DDP, ltv_sys_id_class):
 		self.Q = Q
 		self.Q_final = Q_final	
 		self.R = R
-		n_substeps = 5
+		n_substeps = 1
 
 		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, alpha, horizon, initial_state, final_state)
-		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_substeps, n_samples=40)
+		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_substeps, n_samples=70)
 
 	def state_output(self, state):
 		'''
@@ -56,7 +56,7 @@ class model_free_humanoid_DDP(DDP, ltv_sys_id_class):
 		if path is None:
 			
 			for t in range(0, self.N):
-				self.U_p[t] = np.random.normal(0, 0.0, (self.n_u, 1))	#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
+				self.U_p[t] = np.random.normal(0, .3, (self.n_u, 1))	#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
 			
 			np.copyto(self.U_p_temp, self.U_p)
 			
@@ -74,55 +74,58 @@ if __name__=="__main__":
 
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
-	MODEL_XML = path_to_model_free_DDP+"/models/humanoid.xml" 
-	path_to_file = path_to_model_free_DDP+"/experiments/humanoid/exp_1/humanoid_policy.txt"
-	training_cost_data_file = path_to_model_free_DDP+"/experiments/humanoid/exp_2/training_cost_data.txt"
+	MODEL_XML = path_to_model_free_DDP+"/models/humanoidstandup.xml" 
+	path_to_file = path_to_model_free_DDP+"/experiments/humanoidstandup/exp_1/humanoidstandup_policy.txt"
+	training_cost_data_file = path_to_model_free_DDP+"/experiments/humanoidstandup/exp_1/training_cost_data.txt"
 
 	# Declare other parameters associated with the problem statement
-	horizon = 600
+	horizon = 2000
 	state_dimemsion = 47
 	control_dimension = 17
 
-	Q = 9*np.diag(np.concatenate([[1, 1, 1, 1], np.zeros((43,))]))
-	Q_final = 100*np.diag(np.concatenate([[1, 1, 1, 1], np.zeros((43,))]))
+	Q = 10*np.diag(np.concatenate([[0, 0, 1], np.zeros((44,))]))
+	Q_final = 2500*np.diag(np.concatenate([[0, 0, 4], np.zeros((44,))]))
 	R = .1*np.diag(np.ones((control_dimension, )))
 	
-	alpha = 1
+	alpha = .01
 
 	# Declare the initial state and the final state in the problem
 	initial_state = np.zeros((47,1))
 	final_state = np.zeros((47,1))
 
-	initial_state[2] = 0
-	initial_state[6] = 1
-	final_state[1] = 2
+	initial_state[2] = 0.105
+	initial_state[3] = 1.0
+	
+	
 	final_state[2] = 1.4
-	final_state[3] = 1
+	final_state[4] = np.sqrt(2)/2
+	final_state[6] = -np.sqrt(2)/2
+	
 	
 	n_iterations = 50
 
 	# Initiate the above class that contains objects specific to this problem
-	humanoid = model_free_humanoid_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
+	humanoidstandup = model_free_humanoidstandup_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
 	start_time = time.time()
 
 	# Run the DDP algorithm
-	humanoid.iterate_ddp(n_iterations)
+	humanoidstandup.iterate_ddp(n_iterations)
 	
 	print("Time taken: ", time.time() - start_time)
 	
 	# Save the episodic cost
 	with open(training_cost_data_file, 'w') as f:
-		for cost in humanoid.episodic_cost_history:
+		for cost in humanoidstandup.episodic_cost_history:
 			f.write("%s\n" % cost)
 
 	# Test the obtained policy
-	humanoid.save_policy(path_to_file)
-	humanoid.test_episode(1, path_to_file)
+	humanoidstandup.save_policy(path_to_file)
+	humanoidstandup.test_episode(1, path_to_file)
 
-	print(humanoid.X_p[-1])
+	print(humanoidstandup.X_p[-1])
 	
 	# Plot the episodic cost during the training
-	humanoid.plot_episodic_cost_history()
+	humanoidstandup.plot_episodic_cost_history()
 
 

@@ -55,7 +55,7 @@ class DDP(object):
 		self.delta_0 = 2
 		self.delta = self.delta_0
 		
-		self.c_1 = -6e-1
+		self.c_1 = -1e-1
 		self.count = 0
 		self.episodic_cost_history = []
 
@@ -69,7 +69,7 @@ class DDP(object):
 		self.initialize_traj()
 		
 		for j in range(n_iterations):	
-			print(j, self.alpha)
+			#print(j, self.alpha)
 			
 			if j<2:
 				
@@ -91,7 +91,7 @@ class DDP(object):
 
 					while not f_pass_success_flag:
  
-						print("Forward pass-trying %{}th time".format(i))
+						#print("Forward pass-trying %{}th time".format(i))
 						self.alpha = self.alpha*0.99	#simulated annealing
 						i += 1
 						f_pass_success_flag = self.forward_pass(del_J_alpha)
@@ -105,9 +105,8 @@ class DDP(object):
 			if j<2:
 				self.alpha = self.alpha*0.9
 			else:
-				self.alpha = self.alpha*0.999
+				self.alpha = self.alpha*0.99
 			#print(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))
-			#print(self.X_p[-1])
 			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))	
 
 
@@ -143,7 +142,7 @@ class DDP(object):
 				np.linalg.cholesky(Q_uu)
 
 			except np.linalg.LinAlgError:
-				#print(Q_uu)
+
 				print("FAILED! Q_uu is not Positive definite at t=",t)
 
 				b_pass_success_flag = 0
@@ -230,14 +229,13 @@ class DDP(object):
 		
 		F_x = np.copy(AB[:, 0:n_x])
 		F_u = np.copy(AB[:, n_x:])
-		#print(F_x, F_u)
+		
 		Q_x = self.l_x(x) + ((F_x.T) @ V_x_next)
 		Q_u = self.l_u(u) + ((F_u.T) @ V_x_next)
 
 		Q_xx = 2*self.Q + ((F_x.T) @ ((V_xx_next+self.mu*np.identity(V_xx_next.shape[0]))  @ F_x)) 
 		#print(self.mu*np.identity(V_xx_next.shape[0]))
 		Q_ux = (F_u.T) @ ((V_xx_next+ self.mu*np.identity(V_xx_next.shape[0])) @ F_x)
-		#print(F_u)
 		Q_uu = 2*self.R + (F_u.T) @ ((V_xx_next+ self.mu*np.identity(V_xx_next.shape[0])) @ F_u) + self.mu*np.identity(n_u)
 		#print(F_u.T @ (self.mu*np.identity(V_xx_next.shape[0]) @ F_u))
 		if(activate_second_order_dynamics):
@@ -245,6 +243,7 @@ class DDP(object):
 			Q_xx +=  V_x_F_XU_XU[:n_x, :n_x]  
 			Q_ux +=  0.5*(V_x_F_XU_XU[n_x:n_x + n_u, :n_x ] + V_x_F_XU_XU[:n_x, n_x: n_x + n_u].T)
 			Q_uu +=  V_x_F_XU_XU[n_x:n_x + n_u, n_x:n_x + n_u]
+
 
 		return Q_x, Q_u, Q_xx, Q_uu, Q_ux
 
@@ -257,7 +256,7 @@ class DDP(object):
 		sim = self.sim
 		
 		##########################################################################################
-
+		
 		sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.X_p_0.flatten()]))
 
 
@@ -275,11 +274,11 @@ class DDP(object):
 			
 			sim.data.ctrl[:] = self.U_p[t].flatten()
 			sim.step()
-			#print(sim.get_state())
 			self.X_p[t] = self.state_output(sim.get_state())
-			#print(sim.get_state(), self.X_p[t])
+
 			if render:
 				sim.render(mode='window')
+
 	
 	def cost(self, state, control):
 
