@@ -259,7 +259,7 @@ class DDP(object):
 		
 		##########################################################################################
 
-		sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.convert_2_mujoco_state(self.X_p_0.flatten())]))
+		sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.X_p_0.flatten()]))
 
 
 		for t in range(0, self.N):

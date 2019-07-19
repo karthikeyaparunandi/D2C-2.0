@@ -182,7 +182,7 @@ class ltv_sys_id_class(object):
 			x - append time (which is zero here due to above assumption) before state
 		'''
 
-		sim.set_state_from_flattened(self.convert_2_mujoco_state(x))
+		sim.set_state_from_flattened(x)
 		sim.forward()
 		sim.data.ctrl[:] = u
 		sim.step()

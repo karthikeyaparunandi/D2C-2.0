@@ -75,8 +75,8 @@ if __name__=="__main__":
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
 	MODEL_XML = path_to_model_free_DDP + "/models/fish_old.xml" 
-	path_to_file = path_to_model_free_DDP+"/experiments/fish/exp_2/fish_policy.txt"
-	training_cost_data_file = path_to_model_free_DDP+"/experiments/fish/exp_2/training_cost_data.txt"
+	path_to_file = path_to_model_free_DDP+"/experiments/fish/exp_1/fish_policy.txt"
+	training_cost_data_file = path_to_model_free_DDP+"/experiments/fish/exp_1/training_cost_data.txt"
 
 	# Declare other parameters associated with the problem statement
 	horizon = 600
@@ -103,20 +103,20 @@ if __name__=="__main__":
 	# Initiate the above class that contains objects specific to this problem
 	fish = model_free_fish_6_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
-	start_time = time.time()
+	# start_time = time.time()
 
-	# Run the DDP algorithm
-	fish.iterate_ddp(n_iterations)
+	# # Run the DDP algorithm
+	# fish.iterate_ddp(n_iterations)
 	
-	print("Time taken: ", time.time() - start_time)
+	# print("Time taken: ", time.time() - start_time)
 	
-	# Save the episodic cost
-	with open(training_cost_data_file, 'w') as f:
-		for cost in fish.episodic_cost_history:
-			f.write("%s\n" % cost)
+	# # Save the episodic cost
+	# with open(training_cost_data_file, 'w') as f:
+	# 	for cost in fish.episodic_cost_history:
+	# 		f.write("%s\n" % cost)
 
-	# Test the obtained policy
-	fish.save_policy(path_to_file)
+	# # Test the obtained policy
+	# fish.save_policy(path_to_file)
 	fish.test_episode(1, path_to_file)
 
 	print(fish.X_p[-1])

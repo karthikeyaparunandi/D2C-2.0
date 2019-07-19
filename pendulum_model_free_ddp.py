@@ -103,16 +103,16 @@ if __name__=="__main__":
 
 	# Initiate the above class that contains objects specific to this problem
 	D2C_pendulum = pendulum_D2C_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
-
-	start_time = time.time()
-
-	# Run the DDP algorithm
-	D2C_pendulum.iterate_ddp(n_iterations)
 	
-	print("Time taken: ", time.time() - start_time)
+	# start_time = time.time()
+
+	# # Run the DDP algorithm
+	# D2C_pendulum.iterate_ddp(n_iterations)
 	
-	# Test the obtained policy
-	D2C_pendulum.save_policy(path_to_file)
+	# print("Time taken: ", time.time() - start_time)
+	
+	# # Test the obtained policy
+	# D2C_pendulum.save_policy(path_to_file)
 	D2C_pendulum.test_episode(1, path_to_file)
 	
 	print(D2C_pendulum.X_p[-1])
