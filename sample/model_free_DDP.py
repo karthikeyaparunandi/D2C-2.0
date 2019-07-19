@@ -36,6 +36,9 @@ class DDP(object):
 		self.X_p = np.zeros((self.N, self.n_x, 1))
 		self.X_p_temp = np.zeros((self.N, self.n_x, 1))
 
+		self.X_p_full = np.zeros((self.N, 47, 1))
+		self.X_p_0_full = self.convert_2_mujoco_state(self.X_p_0)
+
 		# Define nominal control trajectory
 		self.U_p  = np.zeros((self.N, self.n_u, 1))
 		self.U_p_temp = np.zeros((self.N, self.n_u, 1))
@@ -106,8 +109,8 @@ class DDP(object):
 				self.alpha = self.alpha*0.9
 			else:
 				self.alpha = self.alpha*0.999
-			#print(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))
-			#print(self.X_p[-1])
+			print(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))
+			print(self.X_p[-1])
 			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))	
 
 
@@ -133,11 +136,11 @@ class DDP(object):
 		for t in range(self.N-1, -1, -1):
 			
 			if t>0:
-				Q_x, Q_u, Q_xx, Q_uu, Q_ux = partials_list(self.X_p[t-1], self.U_p[t], V_x[t], V_xx[t], activate_second_order_dynamics)
+				Q_x, Q_u, Q_xx, Q_uu, Q_ux = partials_list(self.X_p_full[t-1], self.U_p[t], V_x[t], V_xx[t], activate_second_order_dynamics)
 
 			elif t==0:
-				Q_x, Q_u, Q_xx, Q_uu, Q_ux = partials_list(self.X_p_0, self.U_p[0], V_x[0], V_xx[0], activate_second_order_dynamics)
-			#print(Q_uu)
+				Q_x, Q_u, Q_xx, Q_uu, Q_ux = partials_list(self.X_p_0_full, self.U_p[0], V_x[0], V_xx[0], activate_second_order_dynamics)
+
 			try:
 				# If a matrix cannot be positive-definite, that means it cannot be cholesky decomposed
 				np.linalg.cholesky(Q_uu)
@@ -228,19 +231,20 @@ class DDP(object):
 		
 		AB, V_x_F_XU_XU = self.sys_id(x, u, central_diff=1, activate_second_order=activate_second_order_dynamics, V_x_=V_x_next)
 		
-		F_x = np.copy(AB[:, 0:n_x])
-		F_u = np.copy(AB[:, n_x:])
-		#print(F_x, F_u)
-		Q_x = self.l_x(x) + ((F_x.T) @ V_x_next)
+		F_x = np.copy(np.array(AB[2][2]).reshape((1,1)))
+		F_u = np.copy(AB[2, 47:].reshape(1, n_u))
+
+		#print(F_u.T @ V_x_next)
+		
+		Q_x = self.l_x(x[2].reshape(-1,1)) + ((F_x.T) @ V_x_next)
 		Q_u = self.l_u(u) + ((F_u.T) @ V_x_next)
 
-		Q_xx = 2*self.Q + ((F_x.T) @ ((V_xx_next)  @ F_x)) 
+		Q_xx = 2*self.Q + ((F_x.T) @ ((V_xx_next+self.mu*np.identity(V_xx_next.shape[0]))  @ F_x)) 
 		#print(self.mu*np.identity(V_xx_next.shape[0]))
-		Q_ux = (F_u.T) @ ((V_xx_next + self.mu*np.eye(V_xx_next.shape[0])) @ F_x)
-		#print(V_xx_next)
-		Q_uu = 2*self.R + (F_u.T) @ ((V_xx_next + self.mu*np.eye(V_xx_next.shape[0])) @ F_u) 
-		#print("modalu:", Q_uu, x, u, "aipoidi")
-		#print(F_u.T )
+		Q_ux = (F_u.T) @ ((V_xx_next+ self.mu*np.identity(V_xx_next.shape[0])) @ F_x)
+		#print(F_u)
+		Q_uu = 2*self.R + (F_u.T) @ ((V_xx_next+ self.mu*np.identity(V_xx_next.shape[0])) @ F_u) + self.mu*np.identity(n_u)
+		#print(F_u.T @ (self.mu*np.identity(V_xx_next.shape[0]) @ F_u))
 		if(activate_second_order_dynamics):
 			#print(V_x_F_XU_XU)
 			Q_xx +=  V_x_F_XU_XU[:n_x, :n_x]  
@@ -251,7 +255,7 @@ class DDP(object):
 
 
 
-	def forward_pass_sim(self, render=0):
+	def forward_pass_sim(self, render=1):
 		
 		################## defining local functions & variables for faster access ################
 
@@ -259,7 +263,7 @@ class DDP(object):
 		
 		##########################################################################################
 
-		sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.convert_2_mujoco_state(self.X_p_0.flatten())]))
+		sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.X_p_0_full.flatten()]))
 
 
 		for t in range(0, self.N):
@@ -276,8 +280,9 @@ class DDP(object):
 			
 			sim.data.ctrl[:] = self.U_p[t].flatten()
 			sim.step()
-			#print(sim.get_state())
+
 			self.X_p[t] = self.state_output(sim.get_state())
+			self.X_p_full[t] = self.state_output_full(sim.get_state())
 			#print(sim.get_state(), self.X_p[t])
 			if render:
 				sim.render(mode='window')
