@@ -55,7 +55,7 @@ class DDP(object):
 		self.delta_0 = 2
 		self.delta = self.delta_0
 		
-		self.c_1 = -6e-1
+		self.c_1 = -2e-1
 		self.count = 0
 		self.episodic_cost_history = []
 
@@ -278,7 +278,7 @@ class DDP(object):
 			sim.step()
 			#print(sim.get_state())
 			self.X_p[t] = self.state_output(sim.get_state())
-			#print(sim.get_state(), self.X_p[t])
+
 			if render:
 				sim.render(mode='window')
 	

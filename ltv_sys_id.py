@@ -24,6 +24,7 @@ class ltv_sys_id_class(object):
 
 		self.sim = MjSim(load_model_from_path(model_xml_string), nsubsteps=n_substeps)
 		#print(self.sim.data.qpos.shape, self.sim.data.qvel.shape, self.sim.data.ctrl.shape)
+		#print(self.sim.get_state())
 		# print(np.concatenate([self.sim.data.qpos.flat[2:],
   #                              self.sim.data.qvel.flatten(),
   #                              self.sim.data.cinert.flatten(),
@@ -186,7 +187,8 @@ class ltv_sys_id_class(object):
 		sim.forward()
 		sim.data.ctrl[:] = u
 		sim.step()
-		
+		#sim.render(mode='window')
+
 		return sim.get_state()
 			
 

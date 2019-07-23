@@ -30,7 +30,7 @@ class ltv_sys_id_class(object):
   #                              self.sim.data.cvel.flat,
   #                              self.sim.data.qfrc_actuator.flat,
   #                              self.sim.data.cfrc_ext.flat]))
-		print(self.sim.data.xipos.shape)
+		#print(self.sim.data.xipos.shape)
 
 	def sys_id(self, x_t, u_t, central_diff, activate_second_order=0, V_x_=None):
 
