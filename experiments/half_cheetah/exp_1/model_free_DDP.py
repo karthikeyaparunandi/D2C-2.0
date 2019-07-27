@@ -55,7 +55,7 @@ class DDP(object):
 		self.delta_0 = 2
 		self.delta = self.delta_0
 		
-		self.c_1 = -6e-1
+		self.c_1 = -2e-1
 		self.count = 0
 		self.episodic_cost_history = []
 
@@ -102,12 +102,12 @@ class DDP(object):
 				self.regularization_inc_mu()
 				print("This iteration %{} is doomed".format(j))
 
-			if j<5:
+			if j<2:
 				self.alpha = self.alpha*0.9
 			else:
 				self.alpha = self.alpha*0.999
 			#print(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))
-			print(self.X_p[-1])
+			#print(self.X_p[-1])
 			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))	
 
 
@@ -143,7 +143,7 @@ class DDP(object):
 				np.linalg.cholesky(Q_uu)
 
 			except np.linalg.LinAlgError:
-				
+				#print(Q_uu)
 				print("FAILED! Q_uu is not Positive definite at t=",t)
 
 				b_pass_success_flag = 0
@@ -305,14 +305,13 @@ class DDP(object):
 			self.sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.X_p_0.flatten()]))
 			
 			with open(path) as f:
-
-				Pi = json.load(f)
+				U = json.load(f)
 
 			for i in range(0, self.N):
 				
 				self.sim.forward()
 
-				self.sim.data.ctrl[:] = np.array(Pi['U'][str(i)]).flatten() + np.array(Pi['K'][str(i)]) @ (self.state_output(self.sim.get_state()) - np.array(Pi['X'][str(i)]))
+				self.sim.data.ctrl[:] = np.array(U[str(i)]).flatten()
 				self.sim.step()
 				
 				if render:
@@ -384,22 +383,15 @@ class DDP(object):
 
 	def save_policy(self, path_to_file):
 
-		Pi = {}
-		# Open-loop part of the policy
-		Pi['U'] = {}
-		# Closed loop part of the policy - linear feedback gains
-		Pi['K'] = {}
-		Pi['X'] = {}
+		U = {}
 
 		for t in range(0, self.N):
 			
-			Pi['U'][t] = np.ndarray.tolist(self.U_p[t])
-			Pi['K'][t] = np.ndarray.tolist(self.K[t])
-			Pi['X'][t] = np.ndarray.tolist(self.X_p[t])
+			U[t] = np.ndarray.tolist(self.U_p[t])
 			
 		with open(path_to_file, 'w') as outfile:  
 
-			json.dump(Pi, outfile)
+			json.dump(U, outfile)
 
 
 	def l_x(self, x):

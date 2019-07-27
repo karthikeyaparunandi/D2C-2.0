@@ -78,15 +78,15 @@ if __name__=="__main__":
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
 	MODEL_XML = path_to_model_free_DDP +"/models/pendulum.xml"
-	path_to_file = path_to_model_free_DDP+"/pendulum_policy.txt"
-
+	path_to_file = path_to_model_free_DDP+"/experiments/pendulum/exp_1/pendulum_policy.txt"
+	training_cost_data_file = path_to_model_free_DDP+"/experiments/cartpole/exp_1/training_cost_data.txt"
 
 	# Declare other parameters associated with the problem statement
 	horizon = 30
 	state_dimemsion = 2
 	control_dimension = 1
 
-	Q = 9*np.array([[1,0],[0,0.2]])
+	Q = 0*np.array([[1,0],[0,0.2]])
 	Q_final = 900*np.array([[1,0],[0,0.1]])
 	R = .01*np.ones((1,1))
 	alpha = 1
@@ -98,21 +98,26 @@ if __name__=="__main__":
 	W_x_LQR_f = 100*np.eye(2)
 	'''
 	# Declare the initial state and the final state in the problem
-	initial_state = np.array([[np.pi-0.3],[0]])
+	initial_state = np.array([[np.pi-0.1],[0]])
 	final_state = np.array([[0], [0]])#np.zeros((2,1))
 
 	# Initiate the above class that contains objects specific to this problem
 	D2C_pendulum = pendulum_D2C_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 	
-	# start_time = time.time()
+	start_time = time.time()
 
-	# # Run the DDP algorithm
-	# D2C_pendulum.iterate_ddp(n_iterations)
+	# Run the DDP algorithm
+	D2C_pendulum.iterate_ddp(n_iterations)
 	
-	# print("Time taken: ", time.time() - start_time)
+	print("Time taken: ", time.time() - start_time)
 	
-	# # Test the obtained policy
-	# D2C_pendulum.save_policy(path_to_file)
+	# Save the episodic cost
+	with open(training_cost_data_file, 'w') as f:
+		for cost in D2C_pendulum.episodic_cost_history:
+			f.write("%s\n" % cost)
+
+	# Test the obtained policy
+	D2C_pendulum.save_policy(path_to_file)
 	D2C_pendulum.test_episode(1, path_to_file)
 	
 	print(D2C_pendulum.X_p[-1])
