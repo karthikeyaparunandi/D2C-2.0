@@ -24,7 +24,7 @@ class model_free_swimmer_DDP(DDP, ltv_sys_id_class):
 		self.Q_final = Q_final
 		self.R = R
 
-		n_substeps = 2
+		n_substeps = 1
 
 		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, alpha, horizon, initial_state, final_state)
 		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_substeps, n_samples=50)
@@ -80,7 +80,7 @@ if __name__=="__main__":
 	training_cost_data_file = path_to_model_free_DDP+"/experiments/swimmer/exp_2/training_cost_data.txt"
 
 	# Declare other parameters associated with the problem statement
-	horizon = 400
+	horizon = 800
 	state_dimemsion = 10
 	control_dimension = 2
 

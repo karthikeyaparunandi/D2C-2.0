@@ -11,6 +11,8 @@ from model_free_DDP import DDP
 import time
 from mujoco_py import load_model_from_path, MjSim, MjViewer
 from ltv_sys_id import ltv_sys_id_class
+from params.pendulum_params import *
+import os
 
 
 class pendulum_D2C_DDP(DDP, ltv_sys_id_class):
@@ -25,7 +27,7 @@ class pendulum_D2C_DDP(DDP, ltv_sys_id_class):
 		self.R = R
 
 		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, alpha, horizon, initial_state, final_state)
-		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=10)
+		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=feedback_samples_no)
 
 	def state_output(self, state):
 		'''
@@ -77,26 +79,31 @@ if __name__=="__main__":
 
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
-	MODEL_XML = path_to_model_free_DDP +"/models/pendulum.xml"
-	path_to_file = path_to_model_free_DDP+"/experiments/pendulum/exp_1/pendulum_policy.txt"
-	training_cost_data_file = path_to_model_free_DDP+"/experiments/cartpole/exp_1/training_cost_data.txt"
+	MODEL_XML = path_to_model_free_DDP + "/models/pendulum.xml"
+	path_to_file = path_to_model_free_DDP + "/experiments/pendulum/exp_1/pendulum_policy.txt"
+	training_cost_data_file = path_to_model_free_DDP + "/experiments/cartpole/exp_1/training_cost_data.txt"
+	path_do_data = path_to_model_free_DDP + ""
+
+	with open(path_to_data, 'a') as f:
+
+		f.write("D2C training performed for an inverted pendulum task:\n\n")
+
+		f.write("System details : {}\n".format(os.uname().sysname + "--" + os.uname().nodename + "--" + os.uname().release + "--" + os.uname().version + "--" + os.uname().machine))
+		f.write("-------------------------------------------------------------\n")
 
 	# Declare other parameters associated with the problem statement
-	horizon = 30
-	state_dimemsion = 2
-	control_dimension = 1
-
-	Q = 0*np.array([[1,0],[0,0.2]])
-	Q_final = 900*np.array([[1,0],[0,0.1]])
-	R = .01*np.ones((1,1))
+	
 	alpha = 1
-	n_iterations = 15
+	n_iterations = 10
+	
 	# 15 iterations
+	
 	'''
 	W_x_LQR = 10*np.eye(2)
 	W_u_LQR = 2*np.eye(1)
 	W_x_LQR_f = 100*np.eye(2)
 	'''
+
 	# Declare the initial state and the final state in the problem
 	initial_state = np.array([[np.pi-0.1],[0]])
 	final_state = np.array([[0], [0]])#np.zeros((2,1))
@@ -104,25 +111,39 @@ if __name__=="__main__":
 	# Initiate the above class that contains objects specific to this problem
 	D2C_pendulum = pendulum_D2C_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 	
-	start_time = time.time()
+	time_1 = time.time()
 
 	# Run the DDP algorithm
 	D2C_pendulum.iterate_ddp(n_iterations)
 	
-	print("Time taken: ", time.time() - start_time)
+	time_2 = time.time()
+
+	D2C_algorithm_run_time = time_2 - time_1
+	
+	print("D2C-2 algorithm run time taken: ", time_2 - time_1)
 	
 	# Save the episodic cost
 	with open(training_cost_data_file, 'w') as f:
+
 		for cost in D2C_pendulum.episodic_cost_history:
+		
 			f.write("%s\n" % cost)
 
-	# Test the obtained policy
+	# Save the obtained policy
 	D2C_pendulum.save_policy(path_to_file)
-	D2C_pendulum.test_episode(1, path_to_file)
-	
+
+	with open(path_to_data, 'a') as f:
+
+			f.write("Time to compute open-loop: {},\nTime to compute feedback:{},\nTotal time taken: {}\n".format(open_loop_time, feedback_time, D2C_algorithm_run_time))
+			f.write("------------------------------------------------------------------------------------------------------------------------------------\n")
+
 	print(D2C_pendulum.X_p[-1])
 	
 	# Plot the episodic cost during the training
 	D2C_pendulum.plot_episodic_cost_history()
-
+	
+	# Test the obtained policy
+	D2C_pendulum.test_episode(1, path_to_file)
+	
+	
 
