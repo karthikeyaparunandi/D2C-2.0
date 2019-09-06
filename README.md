@@ -11,3 +11,8 @@ Libraries needed:
 Simulator:
 - Mujoco
 - Some models from Deepmind's control suite
+
+
+Main files:
+- model_free_DDP.py (model free DDP/ILQR)
+- ltv_sys_id.py (for system identification)
