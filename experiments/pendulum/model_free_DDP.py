@@ -55,7 +55,7 @@ class DDP(object):
 		self.delta_0 = 2
 		self.delta = self.delta_0
 		
-		self.c_1 = -1e-1
+		self.c_1 = -6e-1
 		self.count = 0
 		self.episodic_cost_history = []
 
@@ -69,7 +69,7 @@ class DDP(object):
 		self.initialize_traj()
 		
 		for j in range(n_iterations):	
-			print(j)
+			print(j, self.alpha)
 			
 			if j<2:
 				
@@ -91,7 +91,7 @@ class DDP(object):
 
 					while not f_pass_success_flag:
  
-						#print("Forward pass-trying %{}th time".format(i))
+						print("Forward pass-trying %{}th time".format(i))
 						self.alpha = self.alpha*0.99	#simulated annealing
 						i += 1
 						f_pass_success_flag = self.forward_pass(del_J_alpha)
@@ -102,12 +102,14 @@ class DDP(object):
 				self.regularization_inc_mu()
 				print("This iteration %{} is doomed".format(j))
 
-			if j<10:
+			if j<5:
 				self.alpha = self.alpha*0.9
 			else:
-				self.alpha = self.alpha*0.99
-			
-			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))	
+				self.alpha = self.alpha*0.999
+			#print(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))
+			#print(self.X_p[-1])
+
+			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N)[0][0])	
 
 
 	def backward_pass(self, activate_second_order_dynamics=0):
@@ -136,13 +138,13 @@ class DDP(object):
 
 			elif t==0:
 				Q_x, Q_u, Q_xx, Q_uu, Q_ux = partials_list(self.X_p_0, self.U_p[0], V_x[0], V_xx[0], activate_second_order_dynamics)
-
+			#print(Q_uu)
 			try:
 				# If a matrix cannot be positive-definite, that means it cannot be cholesky decomposed
 				np.linalg.cholesky(Q_uu)
 
 			except np.linalg.LinAlgError:
-
+				
 				print("FAILED! Q_uu is not Positive definite at t=",t)
 
 				b_pass_success_flag = 0
@@ -206,7 +208,7 @@ class DDP(object):
 			np.copyto(self.U_p, self.U_p_temp)
 	
 			f_pass_success_flag = 0
-			print("f",z, del_J_alpha, J_1, J_2)
+			#print("f",z, del_J_alpha, J_1, J_2)
 
 		else:
 
@@ -229,21 +231,22 @@ class DDP(object):
 		
 		F_x = np.copy(AB[:, 0:n_x])
 		F_u = np.copy(AB[:, n_x:])
-		
+		#print(F_x, F_u)
 		Q_x = self.l_x(x) + ((F_x.T) @ V_x_next)
 		Q_u = self.l_u(u) + ((F_u.T) @ V_x_next)
 
-		Q_xx = 2*self.Q + ((F_x.T) @ ((V_xx_next+self.mu*np.identity(V_xx_next.shape[0]))  @ F_x)) 
+		Q_xx = 2*self.Q + ((F_x.T) @ ((V_xx_next)  @ F_x)) 
 		#print(self.mu*np.identity(V_xx_next.shape[0]))
-		Q_ux = (F_u.T) @ ((V_xx_next+ self.mu*np.identity(V_xx_next.shape[0])) @ F_x)
-		Q_uu = 2*self.R + (F_u.T) @ ((V_xx_next+ self.mu*np.identity(V_xx_next.shape[0])) @ F_u) + self.mu*np.identity(n_u)
-		#print(F_u.T @ (self.mu*np.identity(V_xx_next.shape[0]) @ F_u))
+		Q_ux = (F_u.T) @ ((V_xx_next + self.mu*np.eye(V_xx_next.shape[0])) @ F_x)
+		#print(V_xx_next)
+		Q_uu = 2*self.R + (F_u.T) @ ((V_xx_next + self.mu*np.eye(V_xx_next.shape[0])) @ F_u) 
+		#print("modalu:", Q_uu, x, u, "aipoidi")
+		#print(F_u.T )
 		if(activate_second_order_dynamics):
 			#print(V_x_F_XU_XU)
 			Q_xx +=  V_x_F_XU_XU[:n_x, :n_x]  
 			Q_ux +=  0.5*(V_x_F_XU_XU[n_x:n_x + n_u, :n_x ] + V_x_F_XU_XU[:n_x, n_x: n_x + n_u].T)
 			Q_uu +=  V_x_F_XU_XU[n_x:n_x + n_u, n_x:n_x + n_u]
-
 
 		return Q_x, Q_u, Q_xx, Q_uu, Q_ux
 
@@ -256,7 +259,7 @@ class DDP(object):
 		sim = self.sim
 		
 		##########################################################################################
-		
+
 		sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.X_p_0.flatten()]))
 
 
@@ -274,11 +277,11 @@ class DDP(object):
 			
 			sim.data.ctrl[:] = self.U_p[t].flatten()
 			sim.step()
+			#print(sim.get_state())
 			self.X_p[t] = self.state_output(sim.get_state())
 
 			if render:
 				sim.render(mode='window')
-
 	
 	def cost(self, state, control):
 
@@ -303,13 +306,14 @@ class DDP(object):
 			self.sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.X_p_0.flatten()]))
 			
 			with open(path) as f:
-				U = json.load(f)
+
+				Pi = json.load(f)
 
 			for i in range(0, self.N):
 				
 				self.sim.forward()
 
-				self.sim.data.ctrl[:] = np.array(U[str(i)]).flatten()
+				self.sim.data.ctrl[:] = np.array(Pi['U'][str(i)]).flatten() + np.array(Pi['K'][str(i)]) @ (self.state_output(self.sim.get_state()) - np.array(Pi['X'][str(i)]))
 				self.sim.step()
 				
 				if render:
@@ -357,11 +361,20 @@ class DDP(object):
 		else:
 			self.mu = self.mu_min
 
-	def plot_(self, y, x=None, show=1):
+	def plot_(self, y, save_to_path=None, x=None, show=1):
 
 		if x==None:
 			
-			plt.plot(y)
+			plt.figure(figsize=(7, 5))
+			plt.plot(y, linewidth=2)
+			plt.xlabel('Training iteration count', fontweight="bold", fontsize=12)
+			plt.ylabel('Episodic cost', fontweight="bold", fontsize=12)
+			#plt.grid(linestyle='-.', linewidth=1)
+			plt.grid(color='.910', linewidth=1.5)
+			plt.title('Episodic cost vs No. of training iterations')
+			if save_to_path is not None:
+				plt.savefig(save_to_path, format='png')#, dpi=1000)
+			plt.tight_layout()
 			plt.show()
 		
 		else:
@@ -369,10 +382,10 @@ class DDP(object):
 			plt.plot(y, x)
 			plt.show()
 
-	def plot_episodic_cost_history(self):
+	def plot_episodic_cost_history(self, save_to_path=None):
 
 		try:
-			self.plot_(np.asarray(self.episodic_cost_history).flatten())
+			self.plot_(np.asarray(self.episodic_cost_history).flatten(), save_to_path=save_to_path, x=None, show=1)
 
 		except:
 
@@ -381,15 +394,22 @@ class DDP(object):
 
 	def save_policy(self, path_to_file):
 
-		U = {}
+		Pi = {}
+		# Open-loop part of the policy
+		Pi['U'] = {}
+		# Closed loop part of the policy - linear feedback gains
+		Pi['K'] = {}
+		Pi['X'] = {}
 
 		for t in range(0, self.N):
 			
-			U[t] = np.ndarray.tolist(self.U_p[t])
+			Pi['U'][t] = np.ndarray.tolist(self.U_p[t])
+			Pi['K'][t] = np.ndarray.tolist(self.K[t])
+			Pi['X'][t] = np.ndarray.tolist(self.X_p[t])
 			
 		with open(path_to_file, 'w') as outfile:  
 
-			json.dump(U, outfile)
+			json.dump(Pi, outfile)
 
 
 	def l_x(self, x):

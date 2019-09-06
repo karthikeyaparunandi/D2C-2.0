@@ -1,4 +1,4 @@
-
+import numpy as np
 
 
 horizon = 30
@@ -14,4 +14,4 @@ R = .01*np.ones((1,1))
 
 
 
-feedback_samples_no = 10	
+feedback_samples_no = 10

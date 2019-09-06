@@ -103,10 +103,10 @@ if __name__=="__main__":
 	# Initiate the above class that contains objects specific to this problem
 	acrobot = model_free_acrobot_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
-	start_time = time.time()
+	# start_time = time.time()
 
-	# Run the DDP algorithm
-	#acrobot.iterate_ddp(n_iterations)
+	# # Run the DDP algorithm
+	# acrobot.iterate_ddp(n_iterations)
 	
 	# print("Time taken: ", time.time() - start_time)
 	

@@ -19,11 +19,18 @@ class ltv_sys_id_class(object):
 		self.n_u = action_size
 
 		#perturbation sigma
-		self.sigma = 1e-03
+		self.sigma = 1e-7
 		self.n_samples = n_samples
 
 		self.sim = MjSim(load_model_from_path(model_xml_string), nsubsteps=n_substeps)
-		
+		#print(self.sim.data.qpos.shape, self.sim.data.qvel.shape, self.sim.data.ctrl.shape)
+		# print(np.concatenate([self.sim.data.qpos.flat[2:],
+  #                              self.sim.data.qvel.flatten(),
+  #                              self.sim.data.cinert.flatten(),
+  #                              self.sim.data.cvel.flat,
+  #                              self.sim.data.qfrc_actuator.flat,
+  #                              self.sim.data.cfrc_ext.flat]).shape)
+		print(self.sim.data.xipos.shape)
 
 	def sys_id(self, x_t, u_t, central_diff, activate_second_order=0, V_x_=None):
 
@@ -50,10 +57,12 @@ class ltv_sys_id_class(object):
 			F_X_f = simulate((x_t.T) + X_, (u_t.T) + U_)
 			F_X_b = simulate((x_t.T) - X_, (u_t.T) - U_)
 			Y = 0.5*(F_X_f - F_X_b)
-		
+			# for a,b in zip(F_X_f, F_X_b):
+			# 	print(a,b)
+			# 	print("aindi")
 		else:
 
-			Y = (simulate((x_t.T) + X_, (u_t.T) + U_) - simulate((x_t.T), (u_t.T))).T
+			Y = (simulate((x_t.T) + X_, (u_t.T) + U_) - simulate((x_t.T), (u_t.T)))
 
 			
 		F_XU = np.linalg.solve(Cov_inv, (XU.T @ Y)).T
@@ -84,9 +93,59 @@ class ltv_sys_id_class(object):
 			
 			V_x_F_XU_XU = (D + D.T)/2
 			
-			
+
+
 		return F_XU, V_x_F_XU_XU	#(n_samples*self.sigma**2)
 
+
+
+	def sys_id_FD(self, x_t, u_t, central_diff, activate_second_order=0, V_x_=None):
+
+		'''
+			system identification by a forward finite-difference for a given nominal state and control
+			returns - a numpy array with F_x and F_u horizantally stacked
+		'''
+		################## defining local functions & variables for faster access ################
+
+		simulate = self.simulate
+		n_x = self.n_x
+		n_u = self.n_u
+		##########################################################################################
+		
+		XU = np.random.normal(0.0, self.sigma, (n_x, n_x + n_u))
+		X_ = np.copy(XU[:, :n_x])
+		U_ = np.copy(XU[:, n_x:])
+
+		F_XU = np.zeros((n_x, n_x + n_u))
+		V_x_F_XU_XU = None
+
+		x_t_next = simulate(x_t.T, u_t.T)
+
+		if central_diff:
+			
+			for i in range(0, n_x):
+				for j in range(0, n_x):
+
+					delta = np.zeros((1, n_x))
+					delta[:, j] = XU[i, j]
+					
+					F_XU[i, j] = (simulate(x_t.T + delta, u_t.T)[:, i] - x_t_next[:, i])/XU[i, j]
+
+			for i in range(0, n_x):
+				for j in range(0, n_u):
+
+					delta = np.zeros((1, n_u))
+					delta[:, j] = XU[i, n_x + j]
+					F_XU[i, n_x + j] = (simulate(x_t.T , u_t.T + delta)[:, i] - x_t_next[:, i])/XU[i, n_x + j]
+					
+		else:
+
+			Y = (simulate((x_t.T) + X_, (u_t.T) + U_) - simulate((x_t.T), (u_t.T)))
+
+			
+	
+
+		return F_XU, V_x_F_XU_XU	#(n_samples*self.sigma**2)
 
 	def simulate(self, X, U):
 		
@@ -111,8 +170,7 @@ class ltv_sys_id_class(object):
 		for i in range(X.shape[0]):
 
 			X_next.append(state_output(forward_simulate(sim, X[i] , U[i])))
-
-
+			
 		return np.asarray(X_next)[:,:,0]
 	
 	def vec2symm(self, ):
@@ -130,7 +188,8 @@ class ltv_sys_id_class(object):
 		sim.forward()
 		sim.data.ctrl[:] = u
 		sim.step()
-		
+		#sim.render(mode='window')
+
 		return sim.get_state()
 			
 

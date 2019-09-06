@@ -69,15 +69,10 @@ class DDP(object):
 		self.initialize_traj()
 		
 		for j in range(n_iterations):	
-			print(j, self.alpha)
+			#print(j, self.alpha)
 			
-			if j<2:
-				
-				b_pass_success_flag, del_J_alpha = self.backward_pass()
 
-			else:
-
-				b_pass_success_flag, del_J_alpha = self.backward_pass(activate_second_order_dynamics=0)
+			b_pass_success_flag, del_J_alpha = self.backward_pass(activate_second_order_dynamics=0)
 
 			if b_pass_success_flag == 1:
 
@@ -86,16 +81,16 @@ class DDP(object):
 
 				if not f_pass_success_flag:
 
-					print("Forward pass doomed")
+					#print("Forward pass doomed")
 					i = 2
 
 					while not f_pass_success_flag:
  
-						print("Forward pass-trying %{}th time".format(i))
+						#print("Forward pass-trying %{}th time".format(i))
 						self.alpha = self.alpha*0.99	#simulated annealing
 						i += 1
 						f_pass_success_flag = self.forward_pass(del_J_alpha)
-						print("alpha = ", self.alpha)
+						#print("alpha = ", self.alpha)
 
 			else:
 
@@ -106,10 +101,11 @@ class DDP(object):
 				self.alpha = self.alpha*0.9
 			else:
 				self.alpha = self.alpha*0.999
-			#print(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))
-			print(self.X_p[-1])
-			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))	
 
+			#print(self.X_p[-1])
+
+			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N)[0][0])	
+			#print(j, self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))
 
 	def backward_pass(self, activate_second_order_dynamics=0):
 
@@ -303,6 +299,7 @@ class DDP(object):
 		else:
 		
 			self.sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.X_p_0.flatten()]))
+			self.sim.render(mode='window')
 			
 			with open(path) as f:
 
@@ -311,8 +308,7 @@ class DDP(object):
 			for i in range(0, self.N):
 				
 				self.sim.forward()
-
-				self.sim.data.ctrl[:] = np.array(Pi['U'][str(i)]).flatten() + np.array(Pi['K'][str(i)]) @ (self.state_output(self.sim.get_state()) - np.array(Pi['X'][str(i)]))
+				self.sim.data.ctrl[:] = (np.array(Pi['U'][str(i)]) + np.array(Pi['K'][str(i)]) @ (self.state_output(self.sim.get_state()) - np.array(Pi['X'][str(i)]))).flatten()
 				self.sim.step()
 				
 				if render:
@@ -360,11 +356,20 @@ class DDP(object):
 		else:
 			self.mu = self.mu_min
 
-	def plot_(self, y, x=None, show=1):
+	def plot_(self, y, save_to_path=None, x=None, show=1):
 
 		if x==None:
 			
-			plt.plot(y)
+			plt.figure(figsize=(7, 5))
+			plt.plot(y, linewidth=2)
+			plt.xlabel('Training iteration count', fontweight="bold", fontsize=12)
+			plt.ylabel('Episodic cost', fontweight="bold", fontsize=12)
+			#plt.grid(linestyle='-.', linewidth=1)
+			plt.grid(color='.910', linewidth=1.5)
+			plt.title('Episodic cost vs No. of training iterations')
+			if save_to_path is not None:
+				plt.savefig(save_to_path, format='png')#, dpi=1000)
+			plt.tight_layout()
 			plt.show()
 		
 		else:
@@ -372,10 +377,10 @@ class DDP(object):
 			plt.plot(y, x)
 			plt.show()
 
-	def plot_episodic_cost_history(self):
+	def plot_episodic_cost_history(self, save_to_path=None):
 
 		try:
-			self.plot_(np.asarray(self.episodic_cost_history).flatten())
+			self.plot_(np.asarray(self.episodic_cost_history).flatten(), save_to_path=save_to_path, x=None, show=1)
 
 		except:
 

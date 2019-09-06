@@ -1,0 +1,7 @@
+D2C training performed for a swimmer motion planning task:
+
+System details : Linux--Karthik--5.0.7-surface-linux-surface--#1 SMP Wed Apr 10 09:30:01 EDT 2019--x86_64
+-------------------------------------------------------------
+
+Total time taken: 652.8082478046417
+------------------------------------------------------------------------------------------------------------------------------------

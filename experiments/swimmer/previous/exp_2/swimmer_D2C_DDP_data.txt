@@ -1,0 +1,2 @@
+D2C training performed for a swimmer motion planning task:
+

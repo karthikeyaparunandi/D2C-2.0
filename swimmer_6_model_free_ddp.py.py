@@ -11,7 +11,8 @@ from model_free_DDP import DDP
 import time
 from mujoco_py import load_model_from_path, MjSim, MjViewer
 from ltv_sys_id import ltv_sys_id_class
-
+from params.swimmer6_params import *
+import os
 
 class model_free_swimmer_6_DDP(DDP, ltv_sys_id_class):
 	
@@ -25,7 +26,7 @@ class model_free_swimmer_6_DDP(DDP, ltv_sys_id_class):
 		self.R = R
 
 		DDP.__init__(self, MODEL_XML, state_dimemsion, control_dimension, alpha, horizon, initial_state, final_state)
-		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=25)
+		ltv_sys_id_class.__init__(self, MODEL_XML, state_dimemsion, control_dimension, n_samples=feedback_samples_no)
 
 	def state_output(self, state):
 		'''
@@ -55,7 +56,7 @@ class model_free_swimmer_6_DDP(DDP, ltv_sys_id_class):
 		if path is None:
 			
 			for t in range(0, self.N):
-				self.U_p[t] = np.random.normal(0, 0.1, (self.n_u, 1))	#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
+				self.U_p[t] = np.random.normal(0, nominal_init_stddev, (self.n_u, 1))	#np.random.normal(0, 0.01, self.n_u).reshape(self.n_u,1)#DM(array[t, 4:6])
 			
 			np.copyto(self.U_p_temp, self.U_p)
 			
@@ -73,48 +74,56 @@ if __name__=="__main__":
 
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
-	MODEL_XML = path_to_model_free_DDP + "/models/swimmer6.xml" 
-	path_to_file = path_to_model_free_DDP+"/experiments/swimmer6/exp_1/swimmer_policy.txt"
-	training_cost_data_file = path_to_model_free_DDP+"/experiments/swimmer6/exp_1/training_cost_data.txt"
+	MODEL_XML = path_to_model_free_DDP + "/models/swimmer6.xml"
+	path_to_exp = path_to_model_free_DDP + "/experiments/swimmer6/exp_5"
+
+	path_to_file = path_to_exp + "/swimmer6_policy.txt"
+	training_cost_data_file = path_to_exp + "/training_cost_data.txt"
+	path_to_data = path_to_exp + "/swimmer6_D2C_DDP_data.txt"
 
 	# Declare other parameters associated with the problem statement
-	horizon = 800
-	state_dimemsion = 16
-	control_dimension = 5
-
-	Q = 9*np.diag([1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-	Q_final = 900*np.diag([1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-	R = .005*np.diag([2, 2, 2, 2, 2])
 	
+	n_iterations = 80
 	alpha = 0.5
+	
 	# Declare the initial state and the final state in the problem
 	initial_state = np.zeros((16,1))
 	final_state = np.zeros((16,1))
 	final_state[0] = 0.5
 	final_state[1] = -0.6
-	n_iterations = 80
+
 	# Initiate the above class that contains objects specific to this problem
-	swimmer = model_free_swimmer_6_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
+	swimmer6 = model_free_swimmer_6_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
-	# start_time = time.time()
+	time_1 = time.time()
 
-	# # Run the DDP algorithm
-	# swimmer.iterate_ddp(n_iterations)
+	# Run the DDP algorithm
+	swimmer6.iterate_ddp(n_iterations)
 	
-	# print("Time taken: ", time.time() - start_time)
+	time_2 = time.time()
+
+	D2C_algorithm_run_time = time_2 - time_1
+
+	print("D2C-2 algorithm run time taken: ", D2C_algorithm_run_time)
 	
-	# # Save the episodic cost
-	# with open(training_cost_data_file, 'w') as f:
-	# 	for cost in swimmer.episodic_cost_history:
-	# 		f.write("%s\n" % cost)
+	# Save the episodic cost
+	with open(training_cost_data_file, 'w') as f:
+		for cost in swimmer6.episodic_cost_history:
+			f.write("%s\n" % cost)
 
-	# # Test the obtained policy
-	# swimmer.save_policy(path_to_file)
-	swimmer.test_episode(1, path_to_file)
+	# Test the obtained policy
+	swimmer6.save_policy(path_to_file)
 
-	print(swimmer.X_p[-1])
+	with open(path_to_data, 'a') as f:
+
+			f.write("\nTotal time taken: {}\n".format(D2C_algorithm_run_time))
+			f.write("------------------------------------------------------------------------------------------------------------------------------------\n")
+
+
+	print(swimmer6.X_p[-1])
 	
 	# Plot the episodic cost during the training
-	swimmer.plot_episodic_cost_history()
+	swimmer6.plot_episodic_cost_history(save_to_path=path_to_exp+"/episodic_cost_training.png")
+	swimmer6.test_episode(1)
 
 

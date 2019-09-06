@@ -1,3 +1,5 @@
+copyright - Karthikeya S Parunandi
+
 # Model free DDP
 This repository is an implementation of model free DDP using MuJoCo simulator
 
