@@ -1,6 +1,6 @@
 copyright - Karthikeya S Parunandi
 
-# Model free DDP
+# Decoupled Data-Based Approach for Learning to Control Nonlinear Systems using Model free DDP - D2C-2.0
 This repository is an implementation of model free DDP using MuJoCo simulator
 
 Libraries needed:
