@@ -23,15 +23,7 @@ class ltv_sys_id_class(object):
 		self.n_samples = n_samples
 
 		self.sim = MjSim(load_model_from_path(model_xml_string), nsubsteps=n_substeps)
-		#print(self.sim.data.qpos.shape, self.sim.data.qvel.shape, self.sim.data.ctrl.shape)
-		# print(np.concatenate([self.sim.data.qpos.flat[2:],
-  #                              self.sim.data.qvel.flatten(),
-  #                              self.sim.data.cinert.flatten(),
-  #                              self.sim.data.cvel.flat,
-  #                              self.sim.data.qfrc_actuator.flat,
-  #                              self.sim.data.cfrc_ext.flat]).shape)
-		print(self.sim.data.xipos.shape)
-
+		
 	def sys_id(self, x_t, u_t, central_diff, activate_second_order=0, V_x_=None):
 
 		'''
