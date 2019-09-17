@@ -49,9 +49,7 @@ class ltv_sys_id_class(object):
 			F_X_f = simulate((x_t.T) + X_, (u_t.T) + U_)
 			F_X_b = simulate((x_t.T) - X_, (u_t.T) - U_)
 			Y = 0.5*(F_X_f - F_X_b)
-			# for a,b in zip(F_X_f, F_X_b):
-			# 	print(a,b)
-			# 	print("aindi")
+			
 		else:
 
 			Y = (simulate((x_t.T) + X_, (u_t.T) + U_) - simulate((x_t.T), (u_t.T)))
@@ -73,7 +71,6 @@ class ltv_sys_id_class(object):
 			linear_triu_indices = (n_x+n_u)*triu_indices[0] + triu_indices[1]
 			
 			D_XU_lin = np.copy(D_XU[linear_triu_indices,:])
-			#print(10**10 * D_XU_lin @ D_XU_lin.T)
 			V_x_F_XU_XU_ = np.linalg.solve(10**12 * D_XU_lin @ D_XU_lin.T, 10**(12)*D_XU_lin @ (V_x_.T @ Z).T)
 			D = np.zeros((n_x+n_u, n_x+n_u))
 			# for ind, v in zip(list(np.array(triu_indices).T), V_x_F_XU_XU_):
