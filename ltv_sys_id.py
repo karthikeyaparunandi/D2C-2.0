@@ -9,7 +9,9 @@ Date: July 5, 2019
 import numpy as np
 import scipy.linalg.blas as blas
 from mujoco_py import load_model_from_path, MjSim, MjViewer, MjSimPool
-#import time
+
+
+
 
 class ltv_sys_id_class(object):
 
@@ -18,12 +20,14 @@ class ltv_sys_id_class(object):
 		self.n_x = state_size
 		self.n_u = action_size
 
-		#perturbation sigma
+		# Standard deviation of the perturbation 
 		self.sigma = 1e-7
 		self.n_samples = n_samples
 
 		self.sim = MjSim(load_model_from_path(model_xml_string), nsubsteps=n_substeps)
 		
+
+
 	def sys_id(self, x_t, u_t, central_diff, activate_second_order=0, V_x_=None):
 
 		'''
@@ -35,6 +39,7 @@ class ltv_sys_id_class(object):
 		simulate = self.simulate
 		n_x = self.n_x
 		n_u = self.n_u
+
 		##########################################################################################
 		
 		XU = np.random.normal(0.0, self.sigma, (self.n_samples, n_x + n_u))
@@ -57,6 +62,8 @@ class ltv_sys_id_class(object):
 			
 		F_XU = np.linalg.solve(Cov_inv, (XU.T @ Y)).T
 
+
+		# If the second order terms in dynamics are activated as in the original DDP (not by default)
 		if activate_second_order:
 
 			assert (central_diff == activate_second_order)
@@ -85,6 +92,7 @@ class ltv_sys_id_class(object):
 
 
 		return F_XU, V_x_F_XU_XU	#(n_samples*self.sigma**2)
+
 
 
 
@@ -134,7 +142,11 @@ class ltv_sys_id_class(object):
 			
 	
 
-		return F_XU, V_x_F_XU_XU	#(n_samples*self.sigma**2)
+		return F_XU, V_x_F_XU_XU	
+
+
+
+
 
 	def simulate(self, X, U):
 		
@@ -162,14 +174,20 @@ class ltv_sys_id_class(object):
 			
 		return np.asarray(X_next)[:,:,0]
 	
+
+
+
 	def vec2symm(self, ):
 		pass
+
+
+
 
 	def forward_simulate(self, sim, x, u):
 
 		'''
 			Function to simulate a single input and a single current state
-			Note : THe initial time is set to be zero. So, this can only be used for independent simulations
+			Note : The initial time is set to be zero. So, this can only be used for independent simulations
 			x - append time (which is zero here due to above assumption) before state
 		'''
 
@@ -202,6 +220,7 @@ class ltv_sys_id_class(object):
 	def state_output(state):
 
 		pass
+
 
 	def khatri_rao(self, B, C):
 	    """

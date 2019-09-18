@@ -3,9 +3,14 @@ copyright @ Karthikeya S Parunandi - karthikeyasharma91@gmail.com
 Python class for model free DDP method.
 
 Date: July 6, 2019
+
+ASSUMPTIONS :
+
+1) Costs are quadratic functions
+2) Default is set to ILQR - by dropping the second order terms of dynamics.
+
 '''
 #!/usr/bin/env python
- #Assumption 1 : costs are quadratic functions
 
 from __future__ import division
 
@@ -17,6 +22,9 @@ import time
 import matplotlib.pyplot as plt
 from ltv_sys_id import ltv_sys_id_class
 import json
+
+
+
 
 class DDP(object):
 
@@ -104,6 +112,7 @@ class DDP(object):
 			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N)[0][0])	
 
 
+
 	def backward_pass(self, activate_second_order_dynamics=0):
 
 		################## defining local functions & variables for faster access ################
@@ -120,7 +129,7 @@ class DDP(object):
 
 		np.copyto(V_xx[self.N-1], 2*self.Q_final)
 
-		#initialize before forward pass
+		# Initialize before forward pass
 		del_J_alpha = 0
 
 		for t in range(self.N-1, -1, -1):
@@ -243,6 +252,7 @@ class DDP(object):
 
 
 
+
 	def forward_pass_sim(self, render=0):
 		
 		################## defining local functions & variables for faster access ################
@@ -274,13 +284,19 @@ class DDP(object):
 			if render:
 				sim.render(mode='window')
 	
+
+
 	def cost(self, state, control):
 
 		raise NotImplementedError()
 
+
+
 	def initialize_traj(self):
 		# initial guess for the trajectory
 		pass
+
+
 
 	def test_episode(self, render=0, path=None):
 		
@@ -324,6 +340,8 @@ class DDP(object):
 
 		return cost_total
 
+
+
 	def regularization_inc_mu(self):
 
 		# increase mu - regularization 
@@ -337,7 +355,9 @@ class DDP(object):
 			self.mu = self.mu_max
 
 
-		print(self.mu)
+		#print(self.mu)
+
+
 
 	def regularization_dec_mu(self):
 
@@ -351,6 +371,8 @@ class DDP(object):
 
 		else:
 			self.mu = self.mu_min
+
+
 
 	def plot_(self, y, save_to_path=None, x=None, show=1):
 
@@ -373,6 +395,8 @@ class DDP(object):
 			plt.plot(y, x)
 			plt.show()
 
+
+
 	def plot_episodic_cost_history(self, save_to_path=None):
 
 		try:
@@ -382,6 +406,7 @@ class DDP(object):
 
 			print("Plotting failed")
 			pass
+
 
 	def save_policy(self, path_to_file):
 
@@ -403,13 +428,16 @@ class DDP(object):
 			json.dump(Pi, outfile)
 
 
+
 	def l_x(self, x):
 
 		return 2*self.Q @ (x - self.X_g)
 
+
 	def l_x_f(self, x):
 
 		return 2*self.Q_final @ (x - self.X_g)
+
 
 	def l_u(self, u):
 
