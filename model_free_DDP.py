@@ -59,6 +59,7 @@ class DDP(object):
 		self.count = 0
 		self.episodic_cost_history = []
 
+
 	def iterate_ddp(self, n_iterations):
 		
 		'''
@@ -68,9 +69,7 @@ class DDP(object):
 		# Initialize the trajectory with the desired initial guess
 		self.initialize_traj()
 		
-		for j in range(n_iterations):	
-			#print(j, self.alpha)
-			
+		for j in range(n_iterations):				
 
 			b_pass_success_flag, del_J_alpha = self.backward_pass(activate_second_order_dynamics=0)
 
@@ -102,10 +101,8 @@ class DDP(object):
 			else:
 				self.alpha = self.alpha*0.999
 
-			#print(self.X_p[-1])
-
 			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N)[0][0])	
-			#print(j, self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N))
+
 
 	def backward_pass(self, activate_second_order_dynamics=0):
 
@@ -133,7 +130,7 @@ class DDP(object):
 
 			elif t==0:
 				Q_x, Q_u, Q_xx, Q_uu, Q_ux = partials_list(self.X_p_0, self.U_p[0], V_x[0], V_xx[0], activate_second_order_dynamics)
-			#print(Q_uu)
+
 			try:
 				# If a matrix cannot be positive-definite, that means it cannot be cholesky decomposed
 				np.linalg.cholesky(Q_uu)
@@ -226,19 +223,18 @@ class DDP(object):
 		
 		F_x = np.copy(AB[:, 0:n_x])
 		F_u = np.copy(AB[:, n_x:])
-		#print(F_x, F_u)
+
 		Q_x = self.l_x(x) + ((F_x.T) @ V_x_next)
 		Q_u = self.l_u(u) + ((F_u.T) @ V_x_next)
 
 		Q_xx = 2*self.Q + ((F_x.T) @ ((V_xx_next)  @ F_x)) 
-		#print(self.mu*np.identity(V_xx_next.shape[0]))
+		
 		Q_ux = (F_u.T) @ ((V_xx_next + self.mu*np.eye(V_xx_next.shape[0])) @ F_x)
-		#print(V_xx_next)
+		
 		Q_uu = 2*self.R + (F_u.T) @ ((V_xx_next + self.mu*np.eye(V_xx_next.shape[0])) @ F_u) 
-		#print("modalu:", Q_uu, x, u, "aipoidi")
-		#print(F_u.T )
+		
 		if(activate_second_order_dynamics):
-			#print(V_x_F_XU_XU)
+
 			Q_xx +=  V_x_F_XU_XU[:n_x, :n_x]  
 			Q_ux +=  0.5*(V_x_F_XU_XU[n_x:n_x + n_u, :n_x ] + V_x_F_XU_XU[:n_x, n_x: n_x + n_u].T)
 			Q_uu +=  V_x_F_XU_XU[n_x:n_x + n_u, n_x:n_x + n_u]
@@ -272,7 +268,7 @@ class DDP(object):
 			
 			sim.data.ctrl[:] = self.U_p[t].flatten()
 			sim.step()
-			#print(sim.get_state())
+
 			self.X_p[t] = self.state_output(sim.get_state())
 
 			if render:
