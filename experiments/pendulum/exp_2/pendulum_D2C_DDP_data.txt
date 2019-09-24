@@ -3,5 +3,5 @@ D2C training performed for an inverted pendulum task:
 System details : Linux--Karthik--5.0.7-surface-linux-surface--#1 SMP Wed Apr 10 09:30:01 EDT 2019--x86_64
 -------------------------------------------------------------
 
-Total time taken: 0.31673622131347656
+Total time taken: 0.220045804977417
 ------------------------------------------------------------------------------------------------------------------------------------

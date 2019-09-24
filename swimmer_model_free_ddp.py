@@ -75,7 +75,7 @@ if __name__=="__main__":
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
 	MODEL_XML = path_to_model_free_DDP + "/models/swimmer.xml"
-	path_to_exp = path_to_model_free_DDP + "/experiments/swimmer/exp_6"
+	path_to_exp = path_to_model_free_DDP + "/experiments/swimmer/exp_1"
 
 	path_to_file = path_to_exp + "/swimmer_policy.txt"
 	training_cost_data_file = path_to_exp + "/training_cost_data.txt"
@@ -89,8 +89,8 @@ if __name__=="__main__":
 		f.write("-------------------------------------------------------------\n")
 
 	# Declare other parameters associated with the problem statement
-	alpha = 0.45
-	n_iterations = 120
+	alpha = 0.48
+	n_iterations = 90
 
 	
 	# Declare the initial state and the final state in the problem

@@ -8,7 +8,7 @@ Date: July 5, 2019
 
 import numpy as np
 import scipy.linalg.blas as blas
-from mujoco_py import load_model_from_path, MjSim, MjViewer, MjSimPool
+from mujoco_py import load_model_from_path, MjSim, MjViewer
 
 
 

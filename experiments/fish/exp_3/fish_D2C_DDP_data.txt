@@ -3,5 +3,5 @@ D2C training performed for a fish motion planning task:
 System details : Linux--Karthik--5.0.7-surface-linux-surface--#1 SMP Wed Apr 10 09:30:01 EDT 2019--x86_64
 -------------------------------------------------------------
 
-Total time taken: 1139.4687950611115
+Total time taken: 138.12293815612793
 ------------------------------------------------------------------------------------------------------------------------------------

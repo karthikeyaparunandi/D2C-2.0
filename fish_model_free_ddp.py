@@ -75,23 +75,23 @@ if __name__=="__main__":
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
 	MODEL_XML = path_to_model_free_DDP + "/models/fish_old.xml"
-	path_to_exp = path_to_model_free_DDP + "/experiments/fish/exp_3"
+	path_to_exp = path_to_model_free_DDP + "/experiments/fish/exp_4"
 
 	path_to_file = path_to_exp + "/fish_policy.txt"
 	training_cost_data_file = path_to_exp + "/training_cost_data.txt"
 	path_to_data = path_to_exp + "/fish_D2C_DDP_data.txt"
 
-	# with open(path_to_data, 'w') as f:
+	with open(path_to_data, 'w') as f:
 
-	# 	f.write("D2C training performed for a fish motion planning task:\n\n")
+		f.write("D2C training performed for a fish motion planning task:\n\n")
 
-	# 	f.write("System details : {}\n".format(os.uname().sysname + "--" + os.uname().nodename + "--" + os.uname().release + "--" + os.uname().version + "--" + os.uname().machine))
-	# 	f.write("-------------------------------------------------------------\n")
+		f.write("System details : {}\n".format(os.uname().sysname + "--" + os.uname().nodename + "--" + os.uname().release + "--" + os.uname().version + "--" + os.uname().machine))
+		f.write("-------------------------------------------------------------\n")
 
 	# Declare other parameters associated with the problem statement
 	
 	
-	alpha = 1
+	alpha = .7
 	# Declare the initial state and the final state in the problem
 	initial_state = np.zeros((27,1))
 	final_state = np.zeros((27,1))
@@ -103,14 +103,14 @@ if __name__=="__main__":
 	final_state[1] = 0.4
 	final_state[2] = 0.2
 	final_state[3] = 1
-	n_iterations = 50
+	n_iterations = 20
 	# Initiate the above class that contains objects specific to this problem
 	fish = model_free_fish_6_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
 	time_1 = time.time()
 
 	# Run the DDP algorithm
-	#fish.iterate_ddp(n_iterations)
+	fish.iterate_ddp(n_iterations)
 	
 	time_2 = time.time()
 
@@ -119,23 +119,23 @@ if __name__=="__main__":
 	print("D2C-2 algorithm run time taken: ", D2C_algorithm_run_time)
 
 	# Save the episodic cost
-	# with open(training_cost_data_file, 'w') as f:
-	# 	for cost in fish.episodic_cost_history:
-	# 		f.write("%s\n" % cost)
+	with open(training_cost_data_file, 'w') as f:
+		for cost in fish.episodic_cost_history:
+			f.write("%s\n" % cost)
 
-	# # Test the obtained policy
-	# fish.save_policy(path_to_file)
+	# Test the obtained policy
+	fish.save_policy(path_to_file)
 
-	# with open(path_to_data, 'a') as f:
+	with open(path_to_data, 'a') as f:
 
-	# 		f.write("\nTotal time taken: {}\n".format(D2C_algorithm_run_time))
-	# 		f.write("------------------------------------------------------------------------------------------------------------------------------------\n")
+			f.write("\nTotal time taken: {}\n".format(D2C_algorithm_run_time))
+			f.write("------------------------------------------------------------------------------------------------------------------------------------\n")
 
 
 	print(fish.X_p[-1])
 	
 	# Plot the episodic cost during the training
-	#fish.plot_episodic_cost_history(save_to_path=path_to_exp+"/episodic_cost_training.png")
+	fish.plot_episodic_cost_history(save_to_path=path_to_exp+"/episodic_cost_training.png")
 	fish.test_episode(1, path=path_to_file)
 
 

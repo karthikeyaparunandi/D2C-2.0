@@ -75,16 +75,23 @@ if __name__=="__main__":
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
 	MODEL_XML = path_to_model_free_DDP + "/models/swimmer6.xml"
-	path_to_exp = path_to_model_free_DDP + "/experiments/swimmer6/exp_5"
+	path_to_exp = path_to_model_free_DDP + "/experiments/swimmer6/exp_1"
 
 	path_to_file = path_to_exp + "/swimmer6_policy.txt"
 	training_cost_data_file = path_to_exp + "/training_cost_data.txt"
 	path_to_data = path_to_exp + "/swimmer6_D2C_DDP_data.txt"
 
+	with open(path_to_data, 'w') as f:
+
+		f.write("D2C training performed for an 6-link swimmer task:\n\n")
+
+		f.write("System details : {}\n".format(os.uname().sysname + "--" + os.uname().nodename + "--" + os.uname().release + "--" + os.uname().version + "--" + os.uname().machine))
+		f.write("-------------------------------------------------------------\n")
+
 	# Declare other parameters associated with the problem statement
 	
-	n_iterations = 80
-	alpha = 0.5
+	n_iterations = 100
+	alpha = 0.3
 	
 	# Declare the initial state and the final state in the problem
 	initial_state = np.zeros((16,1))
