@@ -108,7 +108,7 @@ class DDP(object):
 				self.alpha = self.alpha*0.9
 			else:
 				self.alpha = self.alpha*0.999
-
+			
 			self.episodic_cost_history.append(self.calculate_total_cost(self.X_p_0, self.X_p, self.U_p, self.N)[0][0])	
 
 
