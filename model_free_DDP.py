@@ -68,7 +68,7 @@ class DDP(object):
 		self.episodic_cost_history = []
 
 
-	def iterate_ddp(self, n_iterations):
+	def iterate_ddp(self, n_iterations, finite_difference_gradients_flag=False):
 		
 		'''
 			Main function that carries out the algorithm at higher level
@@ -79,7 +79,7 @@ class DDP(object):
 		
 		for j in range(n_iterations):				
 
-			b_pass_success_flag, del_J_alpha = self.backward_pass(activate_second_order_dynamics=0)
+			b_pass_success_flag, del_J_alpha = self.backward_pass(finite_difference_gradients_flag, activate_second_order_dynamics=0)
 
 			if b_pass_success_flag == 1:
 
@@ -113,7 +113,7 @@ class DDP(object):
 
 
 
-	def backward_pass(self, activate_second_order_dynamics=0):
+	def backward_pass(self, finite_difference_gradients_flag=False, activate_second_order_dynamics=0):
 
 		################## defining local functions & variables for faster access ################
 
@@ -135,10 +135,12 @@ class DDP(object):
 		for t in range(self.N-1, -1, -1):
 			
 			if t>0:
-				Q_x, Q_u, Q_xx, Q_uu, Q_ux = partials_list(self.X_p[t-1], self.U_p[t], V_x[t], V_xx[t], activate_second_order_dynamics)
+
+				Q_x, Q_u, Q_xx, Q_uu, Q_ux = partials_list(self.X_p[t-1], self.U_p[t], V_x[t], V_xx[t], activate_second_order_dynamics, finite_difference_gradients_flag)
 
 			elif t==0:
-				Q_x, Q_u, Q_xx, Q_uu, Q_ux = partials_list(self.X_p_0, self.U_p[0], V_x[0], V_xx[0], activate_second_order_dynamics)
+
+				Q_x, Q_u, Q_xx, Q_uu, Q_ux = partials_list(self.X_p_0, self.U_p[0], V_x[0], V_xx[0], activate_second_order_dynamics, finite_difference_gradients_flag)
 
 			try:
 				# If a matrix cannot be positive-definite, that means it cannot be cholesky decomposed
@@ -219,7 +221,7 @@ class DDP(object):
 
 
 
-	def partials_list(self, x, u, V_x_next, V_xx_next, activate_second_order_dynamics):	
+	def partials_list(self, x, u, V_x_next, V_xx_next, activate_second_order_dynamics, finite_difference_gradients_flag=False):	
 
 		################## defining local functions / variables for faster access ################
 
@@ -227,8 +229,13 @@ class DDP(object):
 		n_u = self.n_u
 
 		##########################################################################################
-		
-		AB, V_x_F_XU_XU = self.sys_id(x, u, central_diff=1, activate_second_order=activate_second_order_dynamics, V_x_=V_x_next)
+		if finite_difference_gradients_flag:
+
+			AB, V_x_F_XU_XU = self.sys_id_FD(x, u, central_diff=1, activate_second_order=activate_second_order_dynamics, V_x_=V_x_next)
+
+		else:
+
+			AB, V_x_F_XU_XU = self.sys_id(x, u, central_diff=1, activate_second_order=activate_second_order_dynamics, V_x_=V_x_next)
 		
 		F_x = np.copy(AB[:, 0:n_x])
 		F_u = np.copy(AB[:, n_x:])

@@ -79,7 +79,7 @@ if __name__=="__main__":
 
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
-	path_to_exp = "/experiments/pendulum/exp_5"
+	path_to_exp = "/experiments/pendulum/exp_6"
 	MODEL_XML = path_to_model_free_DDP + "/models/pendulum.xml"
 	path_to_file = path_to_model_free_DDP + path_to_exp + "/pendulum_policy.txt"
 	training_cost_data_file = path_to_model_free_DDP + path_to_exp + "/training_cost_data.txt"

@@ -75,7 +75,7 @@ if __name__=="__main__":
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
 	MODEL_XML = path_to_model_free_DDP + "/models/swimmer6.xml"
-	path_to_exp = path_to_model_free_DDP + "/experiments/swimmer6/exp_1"
+	path_to_exp = path_to_model_free_DDP + "/experiments/swimmer6/exp_10"
 
 	path_to_file = path_to_exp + "/swimmer6_policy.txt"
 	training_cost_data_file = path_to_exp + "/training_cost_data.txt"
@@ -105,7 +105,10 @@ if __name__=="__main__":
 	time_1 = time.time()
 
 	# Run the DDP algorithm
-	swimmer6.iterate_ddp(n_iterations)
+	# To run using our LLS-CD jacobian estimation (faster), make 'finite_difference_gradients_flag = False'
+	# To run using forward difference for jacobian estimation (slower), make 'finite_difference_gradients_flag = True'
+
+	swimmer6.iterate_ddp(n_iterations, finite_difference_gradients_flag=True)
 	
 	time_2 = time.time()
 
