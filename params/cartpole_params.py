@@ -22,10 +22,10 @@ nominal_init_stddev = 0.01
 
 # Cost parameters for feedback design
 
-W_x_LQR = 10*np.eye(state_dimemsion)
-W_u_LQR = 2*np.eye(control_dimension)
+W_x_LQR = 2*np.eye(state_dimemsion)
+W_u_LQR = 1*np.eye(control_dimension)
 W_x_LQR_f = 100*np.eye(state_dimemsion)
 
 
 # D2C parameters
-feedback_n_samples = 25
+feedback_samples_no = 25

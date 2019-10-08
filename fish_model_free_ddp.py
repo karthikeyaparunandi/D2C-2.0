@@ -75,18 +75,12 @@ if __name__=="__main__":
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
 	MODEL_XML = path_to_model_free_DDP + "/models/fish_old.xml"
-	path_to_exp = path_to_model_free_DDP + "/experiments/fish/exp_10"
+	path_to_exp = path_to_model_free_DDP + "/experiments/fish/exp_11"
 
 	path_to_file = path_to_exp + "/fish_policy.txt"
 	training_cost_data_file = path_to_exp + "/training_cost_data.txt"
 	path_to_data = path_to_exp + "/fish_D2C_DDP_data.txt"
 
-	with open(path_to_data, 'w') as f:
-
-		f.write("D2C training performed for a fish motion planning task:\n\n")
-
-		f.write("System details : {}\n".format(os.uname().sysname + "--" + os.uname().nodename + "--" + os.uname().release + "--" + os.uname().version + "--" + os.uname().machine))
-		f.write("-------------------------------------------------------------\n")
 
 	# Declare other parameters associated with the problem statement
 	
@@ -104,43 +98,106 @@ if __name__=="__main__":
 	final_state[3] = 1
 
 	# No. of ILQR iterations to run
-	n_iterations = 20
+	n_iterations = 40
 
 	# Initiate the above class that contains objects specific to this problem
 	fish = model_free_fish_6_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
-	time_1 = time.time()
 
-	# Run the DDP algorithm
-	# To run using our LLS-CD jacobian estimation (faster), make 'finite_difference_gradients_flag = False'
-	# To run using forward difference for jacobian estimation (slower), make 'finite_difference_gradients_flag = True'
+	# ---------------------------------------------------------------------------------------------------------
+	# -----------------------------------------------Training---------------------------------------------------
+	# ---------------------------------------------------------------------------------------------------------
+	# Train the policy
 
-	fish.iterate_ddp(n_iterations, finite_difference_gradients_flag=False)
-	
-	time_2 = time.time()
+	training_flag_on = False
 
-	D2C_algorithm_run_time = time_2 - time_1
+	if training_flag_on:
 
-	print("D2C-2 algorithm run time taken: ", D2C_algorithm_run_time)
+		with open(path_to_data, 'w') as f:
 
-	# Save the history of episodic costs 
-	with open(training_cost_data_file, 'w') as f:
-		for cost in fish.episodic_cost_history:
-			f.write("%s\n" % cost)
+			f.write("D2C training performed for a fish motion planning task:\n\n")
 
+			f.write("System details : {}\n".format(os.uname().sysname + "--" + os.uname().nodename + "--" + os.uname().release + "--" + os.uname().version + "--" + os.uname().machine))
+			f.write("-------------------------------------------------------------\n")
+
+		time_1 = time.time()
+
+		# Run the DDP algorithm
+		# To run using our LLS-CD jacobian estimation (faster), make 'finite_difference_gradients_flag = False'
+		# To run using forward difference for jacobian estimation (slower), make 'finite_difference_gradients_flag = True'
+
+		fish.iterate_ddp(n_iterations, finite_difference_gradients_flag=False)
+		
+		time_2 = time.time()
+
+		D2C_algorithm_run_time = time_2 - time_1
+
+		print("D2C-2 algorithm run time taken: ", D2C_algorithm_run_time)
+
+		# Save the history of episodic costs 
+		with open(training_cost_data_file, 'w') as f:
+			for cost in fish.episodic_cost_history:
+				f.write("%s\n" % cost)
+
+		# Test the obtained policy
+		fish.save_policy(path_to_file)
+
+		with open(path_to_data, 'a') as f:
+
+				f.write("\nTotal time taken: {}\n".format(D2C_algorithm_run_time))
+				f.write("------------------------------------------------------------------------------------------------------------------------------------\n")
+
+		# Display the final state in the deterministic policy on a noiseless system
+		print(fish.X_p[-1])
+		
+		# Plot the episodic cost during the training
+		fish.plot_episodic_cost_history(save_to_path=path_to_exp+"/episodic_cost_training.png")
+
+		# ---------------------------------------------------------------------------------------------------------
+	# -----------------------------------------------Testing---------------------------------------------------
+	# ---------------------------------------------------------------------------------------------------------
 	# Test the obtained policy
-	fish.save_policy(path_to_file)
 
-	with open(path_to_data, 'a') as f:
+	test_flag_on = True
 
-			f.write("\nTotal time taken: {}\n".format(D2C_algorithm_run_time))
-			f.write("------------------------------------------------------------------------------------------------------------------------------------\n")
+	if test_flag_on:
 
-	# Display the final state in the deterministic policy on a noiseless system
-	print(fish.X_p[-1])
-	
-	# Plot the episodic cost during the training
-	fish.plot_episodic_cost_history(save_to_path=path_to_exp+"/episodic_cost_training.png")
-	fish.test_episode(1, path=path_to_file)
+		f = open(path_to_exp + "/fish_testing_data.txt", "a")
 
+		def frange(start, stop, step):
+			i = start
+			while i < stop:
+				yield i
+				i += step
+		
+		u_max = 3.5
+
+		try:
+
+			for i in frange(0.0, 1.02, 0.02):
+
+				print(i)
+				print("\n")
+				terminal_mse = 0
+				Var_terminal_mse = 0
+				n_samples = 100
+
+				for j in range(n_samples):	
+
+					terminal_state = fish.test_episode(render=0, path=path_to_file, noise_stddev=i*u_max)
+					terminal_mse += np.linalg.norm(terminal_state[0:3] - final_state[0:3], axis=0)
+					Var_terminal_mse += (np.linalg.norm(terminal_state[0:3] - final_state[0:3], axis=0))**2
+
+				terminal_mse_avg = terminal_mse/n_samples
+				Var_terminal_mse_avg = (1/(n_samples*(n_samples-1)))*(n_samples*Var_terminal_mse - terminal_mse**2)
+
+				std_dev_mse = np.sqrt(Var_terminal_mse_avg)
+
+				f.write(str(i)+",\t"+str(terminal_mse_avg[0])+",\t"+str(std_dev_mse[0])+"\n")
+		except:
+
+			print("Testing failed!")
+			f.close()
+
+		f.close()
 

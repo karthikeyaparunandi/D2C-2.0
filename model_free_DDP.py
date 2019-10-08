@@ -172,6 +172,7 @@ class DDP(object):
 				del_J_alpha += -self.alpha*((k[t].T) @ Q_u) - 0.5*self.alpha**2 * ((k[t].T) @ (Q_uu @ k[t]))
 				
 				if t>0:
+
 					V_x[t-1] = Q_x + (K[t].T) @ (Q_uu @ k[t]) + ((K[t].T) @ Q_u) + ((Q_ux.T) @ k[t])
 					V_xx[t-1] = Q_xx + ((K[t].T) @ (Q_uu @ K[t])) + ((K[t].T) @ Q_ux) + ((Q_ux.T) @ K[t])
 
@@ -305,7 +306,7 @@ class DDP(object):
 
 
 
-	def test_episode(self, render=0, path=None):
+	def test_episode(self, render=0, path=None, noise_stddev=0):
 		
 		'''
 			Test the episode using the current policy if no path is passed. If a path is mentioned, it simulates the controls from that path
@@ -318,8 +319,8 @@ class DDP(object):
 		else:
 		
 			self.sim.set_state_from_flattened(np.concatenate([np.array([self.sim.get_state().time]), self.X_p_0.flatten()]))
-			self.sim.render(mode='window')
-			
+			#self.sim.render(mode='window')
+
 			with open(path) as f:
 
 				Pi = json.load(f)
@@ -327,11 +328,54 @@ class DDP(object):
 			for i in range(0, self.N):
 				
 				self.sim.forward()
-				self.sim.data.ctrl[:] = (np.array(Pi['U'][str(i)]) + np.array(Pi['K'][str(i)]) @ (self.state_output(self.sim.get_state()) - np.array(Pi['X'][str(i)]))).flatten()
+
+				if i==0:
+				
+					self.sim.data.ctrl[:] = (np.array(Pi['U'][str(i)]) + \
+											np.random.normal(np.zeros(np.shape(Pi['U'][str(i)])), noise_stddev)).flatten()										
+				else:
+					
+					self.sim.data.ctrl[:] = (np.array(Pi['U'][str(i)]) + \
+											np.random.normal(np.zeros(np.shape(Pi['U'][str(i)])), noise_stddev) + \
+											np.array(Pi['K'][str(i-1)]) @ (self.state_output(self.sim.get_state()) - np.array(Pi['X'][str(i-1)]))).flatten()
 				self.sim.step()
 				
 				if render:
 					self.sim.render(mode='window')
+
+			return self.state_output(self.sim.get_state())
+			
+
+
+	def feedback(self, W_x_LQR, W_u_LQR, W_x_LQR_f, finite_difference_gradients_flag=False):
+		'''
+		AB matrix comprises of A and B as [A | B] stacked at every ascending time-step, where,
+		A - f_x
+		B - f_u
+		'''	
+
+		P = W_x_LQR_f
+
+		for t in range(self.N-1, 0, -1):
+
+			if finite_difference_gradients_flag:
+
+				AB, V_x_F_XU_XU = self.sys_id_FD(self.X_p[t-1], self.U_p[t], central_diff=1)
+
+			else:
+
+				AB, V_x_F_XU_XU = self.sys_id(self.X_p[t-1], self.U_p[t], central_diff=1)
+
+			A = AB[:, 0:self.n_x]
+			B = AB[:, self.n_x:]
+
+			S = W_u_LQR + ( (np.transpose(B) @ P) @ B)
+
+			# LQR gain 
+			self.K[t] = -np.linalg.inv(S) @ ( (np.transpose(B) @ P) @ A)
+			
+			# second order equation
+			P = W_x_LQR  +  ((np.transpose(A) @ P) @ A) - ((np.transpose(self.K[t]) @ S) @ self.K[t]) 
 
 
 

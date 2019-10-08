@@ -12,6 +12,8 @@ Q_final = 900*np.array([[1,0],[0,0.1]])
 R = .01*np.ones((1,1))
 
 
-
+W_x_LQR = 10*np.eye(state_dimemsion)
+W_u_LQR = 2*np.eye(control_dimension)
+W_x_LQR_f = 100*np.eye(state_dimemsion)
 
 feedback_samples_no = 10

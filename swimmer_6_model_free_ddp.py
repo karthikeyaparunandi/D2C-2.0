@@ -75,22 +75,16 @@ if __name__=="__main__":
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
 	MODEL_XML = path_to_model_free_DDP + "/models/swimmer6.xml"
-	path_to_exp = path_to_model_free_DDP + "/experiments/swimmer6/exp_10"
+	path_to_exp = path_to_model_free_DDP + "/experiments/swimmer6/exp_11"
 
 	path_to_file = path_to_exp + "/swimmer6_policy.txt"
 	training_cost_data_file = path_to_exp + "/training_cost_data.txt"
 	path_to_data = path_to_exp + "/swimmer6_D2C_DDP_data.txt"
 
-	with open(path_to_data, 'w') as f:
-
-		f.write("D2C training performed for an 6-link swimmer task:\n\n")
-
-		f.write("System details : {}\n".format(os.uname().sysname + "--" + os.uname().nodename + "--" + os.uname().release + "--" + os.uname().version + "--" + os.uname().machine))
-		f.write("-------------------------------------------------------------\n")
 
 	# Declare other parameters associated with the problem statement
 	
-	n_iterations = 100
+	n_iterations = 250
 	alpha = 0.3
 	
 	# Declare the initial state and the final state in the problem
@@ -102,38 +96,103 @@ if __name__=="__main__":
 	# Initiate the above class that contains objects specific to this problem
 	swimmer6 = model_free_swimmer_6_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
-	time_1 = time.time()
+	# ---------------------------------------------------------------------------------------------------------
+	# -----------------------------------------------Training---------------------------------------------------
+	# ---------------------------------------------------------------------------------------------------------
+	# Train the policy
 
-	# Run the DDP algorithm
-	# To run using our LLS-CD jacobian estimation (faster), make 'finite_difference_gradients_flag = False'
-	# To run using forward difference for jacobian estimation (slower), make 'finite_difference_gradients_flag = True'
+	training_flag_on = False
 
-	swimmer6.iterate_ddp(n_iterations, finite_difference_gradients_flag=True)
+	if training_flag_on:
+
+		with open(path_to_data, 'w') as f:
+
+			f.write("D2C training performed for an 6-link swimmer task:\n\n")
+
+			f.write("System details : {}\n".format(os.uname().sysname + "--" + os.uname().nodename + "--" + os.uname().release + "--" + os.uname().version + "--" + os.uname().machine))
+			f.write("-------------------------------------------------------------\n")
+
+		time_1 = time.time()
+
+		# Run the DDP algorithm
+		# To run using our LLS-CD jacobian estimation (faster), make 'finite_difference_gradients_flag = False'
+		# To run using forward difference for jacobian estimation (slower), make 'finite_difference_gradients_flag = True'
+
+		swimmer6.iterate_ddp(n_iterations, finite_difference_gradients_flag=False)
+		swimmer6.feedback(W_x_LQR, W_u_LQR, W_x_LQR_f)
+
+		time_2 = time.time()
+
+		D2C_algorithm_run_time = time_2 - time_1
+
+		print("D2C-2 algorithm run time taken: ", D2C_algorithm_run_time)
+		
+		# Save the episodic cost
+		with open(training_cost_data_file, 'w') as f:
+			for cost in swimmer6.episodic_cost_history:
+				f.write("%s\n" % cost)
+
+		# Test the obtained policy
+		swimmer6.save_policy(path_to_file)
+
+		with open(path_to_data, 'a') as f:
+
+				f.write("\nTotal time taken: {}\n".format(D2C_algorithm_run_time))
+				f.write("------------------------------------------------------------------------------------------------------------------------------------\n")
+
+
+		print(swimmer6.X_p[-1])
+		
+		# Plot the episodic cost during the training
+		swimmer6.plot_episodic_cost_history(save_to_path=path_to_exp+"/episodic_cost_training.png")
 	
-	time_2 = time.time()
-
-	D2C_algorithm_run_time = time_2 - time_1
-
-	print("D2C-2 algorithm run time taken: ", D2C_algorithm_run_time)
-	
-	# Save the episodic cost
-	with open(training_cost_data_file, 'w') as f:
-		for cost in swimmer6.episodic_cost_history:
-			f.write("%s\n" % cost)
-
+	# ---------------------------------------------------------------------------------------------------------
+	# -----------------------------------------------Testing---------------------------------------------------
+	# ---------------------------------------------------------------------------------------------------------
 	# Test the obtained policy
-	swimmer6.save_policy(path_to_file)
 
-	with open(path_to_data, 'a') as f:
+	#swimmer6.test_episode(render=1, path=path_to_file)
+	test_flag_on = True
 
-			f.write("\nTotal time taken: {}\n".format(D2C_algorithm_run_time))
-			f.write("------------------------------------------------------------------------------------------------------------------------------------\n")
+	if test_flag_on:
 
+		f = open(path_to_exp + "/swimmer6_testing_data.txt", "a")
 
-	print(swimmer6.X_p[-1])
-	
-	# Plot the episodic cost during the training
-	swimmer6.plot_episodic_cost_history(save_to_path=path_to_exp+"/episodic_cost_training.png")
-	swimmer6.test_episode(1)
+		def frange(start, stop, step):
+			i = start
+			while i < stop:
+				yield i
+				i += step
+		
+		u_max = 12
+
+		try:
+
+			for i in frange(0.40, 1.02, 0.02):
+
+				print(i)
+				print("\n")
+				terminal_mse = 0
+				Var_terminal_mse = 0
+				n_samples = 100
+
+				for j in range(n_samples):	
+
+					terminal_state = swimmer6.test_episode(render=0, path=path_to_file, noise_stddev=i*u_max)
+					terminal_mse += np.linalg.norm(terminal_state[0:2] - final_state[0:2], axis=0)
+					Var_terminal_mse += (np.linalg.norm(terminal_state[0:2] - final_state[0:2], axis=0))**2
+
+				terminal_mse_avg = terminal_mse/n_samples
+				Var_terminal_mse_avg = (1/(n_samples*(n_samples-1)))*(n_samples*Var_terminal_mse - terminal_mse**2)
+
+				std_dev_mse = np.sqrt(Var_terminal_mse_avg)
+
+				f.write(str(i)+",\t"+str(terminal_mse_avg[0])+",\t"+str(std_dev_mse[0])+"\n")
+		except:
+
+			print("Testing failed!")
+			f.close()
+
+		f.close()
 
 

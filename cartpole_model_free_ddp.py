@@ -80,69 +80,121 @@ if __name__=="__main__":
 	# Path of the model file
 	path_to_model_free_DDP = "/home/karthikeya/Documents/research/model_free_DDP"
 	MODEL_XML = path_to_model_free_DDP+"/models/cartpole.xml"
-	path_to_exp = path_to_model_free_DDP + "/experiments/cartpole/exp_6"
+	path_to_exp = path_to_model_free_DDP + "/experiments/cartpole/exp_10"
 
 	path_to_file = path_to_exp + "/cartpole_policy.txt"
 	training_cost_data_file = path_to_exp + "/training_cost_data.txt"
 	path_to_data = path_to_exp + "/cartpole_D2C_DDP_data.txt"
 
-
-	with open(path_to_data, 'w') as f:
-
-		f.write("D2C training performed for an inverted pendulum task:\n\n")
-
-		f.write("System details : {}\n".format(os.uname().sysname + "--" + os.uname().nodename + "--" + os.uname().release + "--" + os.uname().version + "--" + os.uname().machine))
-		f.write("-------------------------------------------------------------\n")
-
-	# Declare other parameters associated with the problem statement
-
-	# Q = 10*np.array([[2, 0, 0, 0],[0, 8, 0, 0],[0, 0, .2, 0],[0, 0, 0, 0.3]])
-	# Q_final = 900*np.array([[2, 0, 0, 0],[0, 8, 0, 0],[0, 0, 2, 0],[0, 0, 0, 2]])
-	# R = .005*np.ones((1,1))
 	alpha = .4
-	n_iterations = 35
-	'''
-	W_x_LQR = 10*np.eye(2)
-	W_u_LQR = 2*np.eye(1)
-	W_x_LQR_f = 100*np.eye(2)
-	'''
-
+	n_iterations = 35	#65 for a great accuracy
+	
 	# Declare the initial state and the final state in the problem
 	initial_state = np.array([[0], [np.pi-0.3], [0], [0]])
-	final_state = np.array([[0], [0], [0], [0]])#np.zeros((2,1))
+	final_state = np.array([[0], [0], [0], [0]])
 
 	# Initiate the above class that contains objects specific to this problem
 	cartpole = model_free_cartpole_DDP(initial_state, final_state, MODEL_XML, alpha, horizon, state_dimemsion, control_dimension, Q, Q_final, R)
 
-	time_1 = time.time()
+	# ---------------------------------------------------------------------------------------------------------
+	# -----------------------------------------------Training---------------------------------------------------
+	# ---------------------------------------------------------------------------------------------------------
+	# Train the policy
 
-	# Run the DDP algorithm
-	cartpole.iterate_ddp(n_iterations)
+	training_flag_on = True
 
-	time_2 = time.time()
+	if training_flag_on:
 
-	D2C_algorithm_run_time = time_2 - time_1
-	
-	print("D2C-2 algorithm run time taken: ", time_2 - time_1)
+		with open(path_to_data, 'w') as f:
 
-	# Save the episodic cost
-	with open(training_cost_data_file, 'w') as f:
-		for cost in cartpole.episodic_cost_history:
-			f.write("%s\n" % cost)
+			f.write("D2C training performed for an inverted pendulum task:\n\n")
 
+			f.write("System details : {}\n".format(os.uname().sysname + "--" + os.uname().nodename + "--" + os.uname().release + "--" + os.uname().version + "--" + os.uname().machine))
+			f.write("-------------------------------------------------------------\n")
+
+		time_1 = time.time()
+
+		# Run the DDP algorithm
+		cartpole.iterate_ddp(n_iterations, finite_difference_gradients_flag=True)
+		cartpole.feedback(W_x_LQR, W_u_LQR, W_x_LQR_f)
+
+		time_2 = time.time()
+
+		D2C_algorithm_run_time = time_2 - time_1
+		
+		print("D2C-2 algorithm run time taken: ", time_2 - time_1)
+
+		# Save the episodic cost
+		with open(training_cost_data_file, 'w') as f:
+			for cost in cartpole.episodic_cost_history:
+				f.write("%s\n" % cost)
+
+		# Test the obtained policy
+		cartpole.save_policy(path_to_file)
+
+		with open(path_to_data, 'a') as f:
+
+				f.write("\nTotal time taken: {}\n".format(D2C_algorithm_run_time))
+				f.write("------------------------------------------------------------------------------------------------------------------------------------\n")
+
+
+		print(cartpole.X_p[-1])
+		
+		# Plot the episodic cost during the training
+		cartpole.plot_episodic_cost_history(save_to_path=path_to_exp+"/episodic_cost_training.png")
+
+	# ---------------------------------------------------------------------------------------------------------
+	# -----------------------------------------------Testing---------------------------------------------------
+	# ---------------------------------------------------------------------------------------------------------
 	# Test the obtained policy
-	cartpole.save_policy(path_to_file)
+	#print(np.max(cartpole.U_p))
 
-	with open(path_to_data, 'a') as f:
+	test_flag_on = False
 
-			f.write("\nTotal time taken: {}\n".format(D2C_algorithm_run_time))
-			f.write("------------------------------------------------------------------------------------------------------------------------------------\n")
+	if test_flag_on:
 
+		f = open(path_to_exp + "/cartpole_testing_data.txt", "a")
 
-	print(cartpole.X_p[-1])
-	
-	# Plot the episodic cost during the training
-	cartpole.plot_episodic_cost_history(save_to_path=path_to_exp+"/episodic_cost_training.png")
+		def frange(start, stop, step):
+			i = start
+			while i < stop:
+				yield i
+				i += step
+		
+		u_max = 1
 
-	cartpole.test_episode(1)
+		try:
+
+			for i in frange(.96, .98, 0.02):
+					
+				print(i,"\n")
+				episode_reward_n = 0
+				Var_n = 0
+				terminal_mse = 0
+				Var_terminal_mse = 0
+				n_samples = 1000
+
+				for j in range(n_samples):	
+
+					terminal_state = cartpole.test_episode(render=0, path=path_to_file, noise_stddev=i*u_max)
+					terminal_mse += np.linalg.norm(terminal_state[0:2], axis=0)
+					Var_terminal_mse += (np.linalg.norm(terminal_state[0:2], axis=0))**2
+
+				terminal_mse_avg = terminal_mse/n_samples
+				Var_terminal_mse_avg = (1/(n_samples*(n_samples-1)))*(n_samples*Var_terminal_mse - terminal_mse**2)
+
+				if Var_terminal_mse_avg > 0:
+						
+					std_dev_mse = np.sqrt(Var_terminal_mse_avg)
+					
+				else:
+
+					std_dev_mse = [0]
+
+				f.write(str(i)+",\t"+str(terminal_mse_avg[0])+",\t"+str(std_dev_mse[0])+"\n")
+		except:
+
+			f.close()
+
+		f.close()
 
